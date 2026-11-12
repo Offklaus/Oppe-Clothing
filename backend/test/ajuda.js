@@ -18,11 +18,14 @@ export async function prepararBanco() {
   return pool;
 }
 
-export async function subirServidor(pool) {
+export async function subirServidor(pool, { config: ajustes = {}, limiteLogin = 1000 } = {}) {
   const app = criarApp({
     pool,
-    config: { ...config, producao: false, siteUrl: 'https://oppe.exemplo', origensPermitidas: [ORIGEM] },
-    limiteLogin: 1000,
+    config: {
+      ...config, producao: false, cookieSeguro: false, trustProxy: false,
+      siteUrl: 'https://oppe.exemplo', origensPermitidas: [ORIGEM], ...ajustes
+    },
+    limiteLogin,
     limiteApi: 10_000
   });
   const servidor = await new Promise((ok) => { const s = app.listen(0, () => ok(s)); });

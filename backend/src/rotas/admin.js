@@ -18,7 +18,7 @@ const enviarImagem = multer({
 
 const DESCRICOES = {
   login: () => 'entrou no painel',
-  login_falhou: (d) => `tentativa de login sem sucesso${d.email ? ` (${d.email})` : ''}`,
+  login_falhou: (d) => `tentativa de login sem sucesso${d.email ? ` (${d.email})` : d.formatoInvalido ? ' (e-mail em formato inválido)' : ''}`,
   logout: () => 'saiu do painel',
   produto_criado: (d) => `cadastrou a peça ${d.nome} (${d.cor})`,
   produto_editado: (d) => `editou a peça ${d.nome} (${d.cor})`,
@@ -55,12 +55,14 @@ export function rotasAdmin({ pool, config, limiteLogin = 10 }) {
     try {
       usuario = await auth.autenticar(pool, dados);
     } catch (erro) {
-      if (erro.status === 401) await registrar(req, 'login_falhou', 'sessao', null, { email: dados.email }, null);
+      // só grava o texto se tiver formato de e-mail: quem digita a senha no campo errado não a deixa no registro
+      const detalhe = esquemas.pareceEmail(dados.email) ? { email: dados.email } : { formatoInvalido: true };
+      if (erro.status === 401) await registrar(req, 'login_falhou', 'sessao', null, detalhe, null);
       throw erro;
     }
     await encerrarSessao(pool, req.cookies?.[COOKIE_SESSAO]); // nova sessão a cada login
     const token = await criarSessao(pool, usuario.id, { ip: req.ip, userAgent: req.get('user-agent') });
-    res.cookie(COOKIE_SESSAO, token, opcoesCookie(config.producao));
+    res.cookie(COOKIE_SESSAO, token, opcoesCookie(config.cookieSeguro));
     await registrar(req, 'login', 'sessao', null, null, usuario);
     res.json({ usuario });
   });
@@ -68,7 +70,7 @@ export function rotasAdmin({ pool, config, limiteLogin = 10 }) {
   r.post('/logout', async (req, res) => {
     await encerrarSessao(pool, req.cookies?.[COOKIE_SESSAO]);
     if (req.admin) await registrar(req, 'logout', 'sessao');
-    const { maxAge, ...semValidade } = opcoesCookie(config.producao);
+    const { maxAge, ...semValidade } = opcoesCookie(config.cookieSeguro);
     res.clearCookie(COOKIE_SESSAO, semValidade);
     res.status(204).end();
   });

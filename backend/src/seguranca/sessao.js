@@ -8,8 +8,9 @@ export const ABSOLUTA_MS = 12 * 60 * 60 * 1000;  // 12h no máximo, mesmo em uso
 const FORMATO_TOKEN = /^[A-Za-z0-9_-]{43}$/;
 const hashToken = (token) => createHash('sha256').update(token).digest();
 
-export function opcoesCookie(producao) {
-  return { httpOnly: true, secure: producao, sameSite: 'strict', path: '/api', maxAge: ABSOLUTA_MS };
+/** seguro = true: o navegador só envia o cookie por HTTPS (config.cookieSeguro). */
+export function opcoesCookie(seguro) {
+  return { httpOnly: true, secure: Boolean(seguro), sameSite: 'strict', path: '/api', maxAge: ABSOLUTA_MS };
 }
 
 export async function criarSessao(db, usuarioId, { ip, userAgent } = {}) {

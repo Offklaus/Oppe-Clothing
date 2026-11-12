@@ -4,7 +4,8 @@ import sharp from 'sharp';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { config } from '../src/config.js';
+import { config, montarConfig } from '../src/config.js';
+import { opcoesCookie } from '../src/seguranca/sessao.js';
 import { criarUsuario } from '../src/servicos/autenticacao.js';
 import { clienteAdmin, ORIGEM, prepararBanco, SENHA_TESTE, subirServidor } from './ajuda.js';
 
@@ -209,6 +210,62 @@ test('novo admin: senha forte, e-mail único e resposta sem hash', async () => {
   assert.equal(ok.corpo.email, 'novo@teste.local');
   assert.equal(ok.corpo.senha_hash, undefined);
   assert.equal((await admin.pedir('POST', '/usuarios', { nome: 'Novo', email: 'novo@teste.local', senha: 'Outra-Senha-Bem-Longa-1' })).status, 409);
+});
+
+test('configuração: sem TRUST_PROXY não confia em X-Forwarded-For; cookie Secure quando o site é https', () => {
+  const producao = montarConfig({ NODE_ENV: 'production', SITE_URL: 'https://oppe.exemplo' });
+  assert.equal(producao.trustProxy, false);
+  assert.equal(producao.cookieSeguro, true);
+  assert.equal(montarConfig({ SITE_URL: 'https://oppe.exemplo' }).cookieSeguro, true, 'https mesmo sem NODE_ENV');
+  assert.equal(montarConfig({ SITE_URL: 'http://localhost:5173' }).cookieSeguro, false);
+  assert.equal(montarConfig({ TRUST_PROXY: '1' }).trustProxy, 1);
+  assert.equal(montarConfig({ TRUST_PROXY: 'loopback' }).trustProxy, 'loopback');
+  assert.equal(opcoesCookie(true).secure, true);
+});
+
+test('inventar o IP no X-Forwarded-For não escapa do limite de logins', async () => {
+  const servidor = await subirServidor(pool, { limiteLogin: 3, config: { trustProxy: montarConfig({ NODE_ENV: 'production' }).trustProxy } });
+  try {
+    const respostas = [];
+    for (let i = 1; i <= 4; i++) {
+      const r = await fetch(`${servidor.base}/api/admin/login`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', origin: ORIGEM, 'x-oppe-admin': '1', 'x-forwarded-for': `203.0.113.${i}` },
+        body: JSON.stringify({ email: 'ninguem@teste.local', senha: 'qualquer-coisa' })
+      });
+      respostas.push(r.status);
+    }
+    assert.deepEqual(respostas, [401, 401, 401, 429]);
+  } finally {
+    await servidor.fechar();
+  }
+});
+
+test('com o site em https o cookie da sessão sai com Secure', async () => {
+  const servidor = await subirServidor(pool, { config: { cookieSeguro: true } });
+  try {
+    const r = await clienteAdmin(servidor.base).pedir('POST', '/login', { email: EMAIL, senha: SENHA_TESTE });
+    assert.equal(r.status, 200);
+    assert.match(r.setCookie, /;\s*Secure/i);
+  } finally {
+    await servidor.fechar();
+  }
+});
+
+test('login que falha não grava no registro um texto que não é e-mail (pode ser uma senha)', async () => {
+  const c = clienteAdmin(srv.base);
+  assert.equal((await c.pedir('POST', '/login', { email: 'minha senha secreta 123', senha: 'x' })).status, 401);
+  const lista = (await admin.pedir('GET', '/auditoria')).corpo;
+  assert.ok(!JSON.stringify(lista).includes('minha senha secreta'));
+  assert.ok(lista.some((a) => a.descricao === 'tentativa de login sem sucesso (e-mail em formato inválido)'));
+  const { rows } = await pool.query("SELECT count(*)::int AS n FROM auditoria WHERE detalhes::text LIKE '%minha senha secreta%'");
+  assert.equal(rows[0].n, 0);
+});
+
+test('id fora do intervalo do banco responde 400, não erro interno', async () => {
+  assert.equal((await admin.pedir('GET', '/produtos/99999999999')).status, 400);
+  assert.equal((await admin.pedir('DELETE', '/colecoes/99999999999')).status, 400);
+  assert.equal((await admin.pedir('GET', '/produtos/1.5')).status, 400);
 });
 
 test('a atividade registra as ações do painel', async () => {

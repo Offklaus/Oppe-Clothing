@@ -91,6 +91,10 @@ export const esquemaTrocaSenha = z.strictObject({
 
 export const esquemaNovaSenha = z.strictObject({ novaSenha: z.string().max(128) });
 
-export const idNumerico = z.coerce.number().int().positive();
+// ids do banco são "integer": acima disso a consulta falharia com erro interno
+export const idNumerico = z.coerce.number().int().positive().max(2_147_483_647);
+
+/** Usado para decidir se um texto pode ser gravado no registro como e-mail. */
+export const pareceEmail = (texto) => z.email().max(254).safeParse(texto).success;
 export const idUuid = z.uuid();
 export const posicaoImagem = z.coerce.number().int().min(0).max(1);

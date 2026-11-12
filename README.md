@@ -66,9 +66,9 @@ npm test
 - **Login:**
   - mesma resposta para e-mail inexistente ou senha errada;
   - 5 erros bloqueiam a conta por 15 minutos;
-  - limite de tentativas por IP.
+  - limite de tentativas por IP (o `X-Forwarded-For` só é aceito com `TRUST_PROXY` definido, então não dá para inventar IP).
 - **Sessão:**
-  - cookie `httpOnly`, `SameSite=Strict` e `Secure` em produção;
+  - cookie `httpOnly`, `SameSite=Strict` e `Secure` sempre que o site roda em HTTPS;
   - no banco fica só o hash do token;
   - expira com 2h parada ou 12h no total;
   - trocar a senha desconecta os outros aparelhos.
