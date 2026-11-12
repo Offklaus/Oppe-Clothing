@@ -223,6 +223,17 @@ test('configuração: sem TRUST_PROXY não confia em X-Forwarded-For; cookie Sec
   assert.equal(opcoesCookie(true).secure, true);
 });
 
+test('SITE_URL e ORIGENS_EXTRAS precisam ser endereços completos', () => {
+  const ok = montarConfig({ SITE_URL: 'https://OppeClothing.com/', ORIGENS_EXTRAS: 'https://www.oppeclothing.com, https://oppe.onrender.com' });
+  assert.equal(ok.siteUrl, 'https://oppeclothing.com');
+  assert.ok(ok.origensPermitidas.includes('https://www.oppeclothing.com'));
+  assert.ok(ok.origensPermitidas.includes('https://oppe.onrender.com'));
+  for (const errado of ['oppeclothing.com', 'www.oppeclothing.com', 'https://oppeclothing.com/loja', 'ftp://oppeclothing.com']) {
+    assert.throws(() => montarConfig({ SITE_URL: errado }), /SITE_URL deve ser o endereço completo/, errado);
+  }
+  assert.throws(() => montarConfig({ SITE_URL: 'https://oppeclothing.com', ORIGENS_EXTRAS: 'oppe.onrender.com' }), /ORIGENS_EXTRAS/);
+});
+
 test('inventar o IP no X-Forwarded-For não escapa do limite de logins', async () => {
   const servidor = await subirServidor(pool, { limiteLogin: 3, config: { trustProxy: montarConfig({ NODE_ENV: 'production' }).trustProxy } });
   try {

@@ -29,6 +29,20 @@ function lerUrlSupabase(valor) {
   return url;
 }
 
+/**
+ * SITE_URL e ORIGENS_EXTRAS precisam ser origens completas (https://dominio). O navegador envia
+ * a origem assim no cabeçalho Origin; um valor como "oppeclothing.com" faria o painel recusar todo login.
+ */
+function lerOrigem(valor, nome) {
+  const texto = semBarraFinal(String(valor));
+  let url = null;
+  try { url = new URL(texto); } catch { /* sem http(s):// */ }
+  const valida = url && ['http:', 'https:'].includes(url.protocol) && url.pathname === '/'
+    && !url.search && !url.hash && !url.username && !url.password;
+  if (!valida) throw new Error(`${nome} deve ser o endereço completo do site, ex.: https://oppeclothing.com (recebido: "${texto}")`);
+  return url.origin;
+}
+
 function lerBucket(valor) {
   const bucket = String(valor ?? '').trim() || 'produtos';
   if (!/^[a-z0-9-]{3,63}$/.test(bucket)) throw new Error('SUPABASE_BUCKET inválido (use letras minúsculas, números e hífen).');
@@ -37,11 +51,11 @@ function lerBucket(valor) {
 
 export function montarConfig(env = process.env) {
   const producao = env.NODE_ENV === 'production';
-  const siteUrl = semBarraFinal(env.SITE_URL ?? 'http://localhost:5173');
+  const siteUrl = lerOrigem(env.SITE_URL || 'http://localhost:5173', 'SITE_URL');
 
   // Origens de onde o painel pode enviar alterações (proteção contra CSRF).
   const origens = new Set([siteUrl]);
-  for (const extra of (env.ORIGENS_EXTRAS ?? '').split(',')) if (extra.trim()) origens.add(semBarraFinal(extra));
+  for (const extra of (env.ORIGENS_EXTRAS ?? '').split(',')) if (extra.trim()) origens.add(lerOrigem(extra, 'ORIGENS_EXTRAS'));
   if (!producao) {
     origens.add('http://localhost:5173');
     origens.add('http://127.0.0.1:5173');
