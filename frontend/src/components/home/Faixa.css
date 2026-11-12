@@ -1,0 +1,18 @@
+.faixa { background: var(--vermelho); color: var(--preto); overflow: hidden; padding: 16px 0; }
+.faixa__track { display: flex; width: max-content; animation: faixa-corre 40s linear infinite; }
+.faixa__group {
+  display: flex; align-items: center; gap: 28px; padding-left: 28px; white-space: nowrap;
+  font-family: var(--f-display); font-size: 30px; text-transform: uppercase; line-height: 1.2;
+}
+@keyframes faixa-corre { to { transform: translateX(-50%); } }
+
+@media (max-width: 759px) {
+  .faixa { padding: 12px 0; }
+  .faixa__track { animation-duration: 30s; }
+  .faixa__group { font-size: 22px; gap: 18px; padding-left: 18px; }
+  .faixa__group .estrela { width: 14px; height: 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .faixa__track { animation: none !important; }
+}

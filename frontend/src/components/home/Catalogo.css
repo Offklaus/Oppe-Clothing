@@ -1,0 +1,21 @@
+.catalogo { padding-block: 88px 96px; }
+.chips { display: flex; flex-wrap: wrap; gap: 10px; }
+.chip {
+  min-height: 44px; padding: 0 18px; cursor: pointer;
+  border: 1.5px solid var(--preto); background: transparent; color: var(--preto);
+  font-family: var(--f-mono); font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  transition: background-color 0.2s, color 0.2s;
+}
+.chip:hover { background: var(--concreto); }
+.chip[aria-pressed="true"] { background: var(--preto); color: var(--cru); }
+
+@media (max-width: 759px) {
+  .catalogo { padding-block: 44px 52px; }
+  .catalogo .eyebrow { font-size: 12px; letter-spacing: 0.12em; }
+  .chips {
+    flex-wrap: nowrap; overflow-x: auto; gap: 8px; scrollbar-width: none;
+    margin-inline: calc(-1 * var(--gutter)); padding: 0 var(--gutter) 4px;
+  }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip { flex: none; padding: 0 16px; font-size: 12px; letter-spacing: 0.08em; }
+}

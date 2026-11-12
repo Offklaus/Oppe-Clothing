@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+# fotos enviadas pelo painel (ficam no servidor, não no repositório)
+backend/public/images/produtos/
+# artes originais em PNG (66 MB); o site usa as versões WebP de backend/public/images/camisetas
+pictures camisas/
+# configurações pessoais do Claude Code
+.claude/settings.local.json
+*.log
+.DS_Store

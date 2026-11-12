@@ -1,0 +1,20 @@
+{
+  "name": "oppe-clothing",
+  "private": true,
+  "description": "Catálogo Oppe Clothing — frontend (Vite + React) e backend (Express).",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n api,site -c red,gray \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+    "build": "npm run build -w frontend",
+    "start": "npm start -w backend",
+    "test": "npm test -w backend",
+    "db:preparar": "npm run db:preparar -w backend",
+    "admin:criar": "npm run admin:criar -w backend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0"
+  }
+}

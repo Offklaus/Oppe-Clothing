@@ -1,0 +1,45 @@
+.colecao { background: var(--preto); color: var(--cru); }
+.colecao__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+  grid-template-rows: 1fr auto auto auto auto auto 1fr;
+  grid-template-areas:
+    ".       imgs"
+    "eyebrow imgs"
+    "title   imgs"
+    "quote   imgs"
+    "text    imgs"
+    "cta     imgs"
+    ".       imgs";
+  column-gap: 48px; row-gap: 22px; padding-block: 88px;
+}
+.colecao__eyebrow { grid-area: eyebrow; }
+.colecao__title { grid-area: title; font-size: clamp(48px, 6vw, 96px); line-height: 0.88; }
+.colecao__quote { grid-area: quote; font-size: clamp(24px, 2.4vw, 32px); line-height: 1.2; }
+.colecao__text { grid-area: text; max-width: 460px; font-size: 17px; line-height: 1.55; color: var(--pedra); }
+.colecao__cta { grid-area: cta; justify-self: start; }
+.colecao__imgs { grid-area: imgs; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.colecao__img {
+  aspect-ratio: 4 / 5; background: var(--concreto); overflow: hidden;
+  display: flex; align-items: center; justify-content: center; text-decoration: none;
+}
+.colecao__img img { width: 100%; height: auto; transition: transform 0.6s var(--ease-out); }
+.colecao__img:hover img { transform: scale(1.04); }
+
+@media (max-width: 1023px) {
+  .colecao__inner {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    grid-template-areas: "eyebrow" "title" "imgs" "quote" "text" "cta";
+    row-gap: 18px; padding-block: 64px;
+  }
+}
+
+@media (max-width: 759px) {
+  .colecao__inner { padding-block: 48px; }
+  .colecao__title { font-size: 52px; }
+  .colecao__imgs { gap: 10px; margin-block: 6px; }
+  .colecao__quote { font-size: 24px; }
+  .colecao__text { font-size: 16px; }
+  .colecao__cta { justify-self: stretch; }
+}

@@ -1,0 +1,156 @@
+/* Painel Oppe Clothing — mesmo sistema visual do site, num layout de trabalho. */
+
+.adm-carregando { padding: 48px var(--gutter); font-family: var(--f-mono); letter-spacing: 0.1em; }
+
+.adm {
+  min-height: 100vh; display: grid; grid-template-columns: 240px minmax(0, 1fr);
+  background: var(--cru); color: var(--preto);
+}
+
+/* ---------- lateral ---------- */
+.adm__lateral {
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  background: var(--preto); color: var(--cru);
+  display: flex; flex-direction: column; gap: 28px; padding: 24px 14px;
+}
+.adm__marca { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--cru); padding: 0 6px; }
+.adm__marca:hover { color: var(--cru); }
+.adm__marca img { height: 46px; width: auto; }
+.adm__marca span { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.18em; color: var(--pedra); }
+.adm__nav { display: flex; flex-direction: column; gap: 2px; }
+.adm__nav a {
+  color: var(--pedra); text-decoration: none; padding: 12px;
+  font-family: var(--f-mono); font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase;
+  border-left: 3px solid transparent;
+}
+.adm__nav a:hover { color: var(--cru); }
+.adm__nav a.active { color: var(--cru); border-left-color: var(--vermelho); background: rgba(242, 238, 227, 0.06); }
+.adm__rodape { margin-top: auto; display: flex; flex-direction: column; gap: 10px; padding: 0 6px; }
+.adm__usuario { display: flex; flex-direction: column; font-size: 14px; font-weight: 700; }
+.adm__usuario small { font-weight: 400; color: var(--pedra); font-size: 12px; word-break: break-all; }
+.adm__link { color: var(--cru); font-family: var(--f-mono); font-size: 12px; letter-spacing: 0.08em; padding: 8px 0; }
+.adm__link:hover { color: var(--pedra); }
+
+.adm__conteudo { padding: 32px clamp(16px, 4vw, 48px) 72px; max-width: 1180px; width: 100%; }
+
+/* ---------- títulos ---------- */
+.adm-cabecalho { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 28px; }
+.adm-cabecalho__acoes { display: flex; flex-wrap: wrap; gap: 10px; }
+.adm-titulo { font-family: var(--f-display); font-weight: 400; text-transform: uppercase; font-size: clamp(36px, 4vw, 52px); line-height: 0.95; }
+.adm-subtitulo { font-family: var(--f-display); font-weight: 400; text-transform: uppercase; font-size: 26px; line-height: 1; }
+.adm-texto { color: var(--grafite); font-size: 15px; }
+
+/* ---------- blocos ---------- */
+.adm-bloco { border: 1px solid var(--concreto); padding: 24px; display: flex; flex-direction: column; gap: 18px; margin-bottom: 24px; }
+.adm-bloco__titulo { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.adm-grade { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.adm-grade--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.adm-larga { grid-column: 1 / -1; }
+.adm-acoes { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.adm-acoes--fim { justify-content: flex-end; }
+
+/* ---------- campos ---------- */
+.adm-campo { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.adm-campo label { font-family: var(--f-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.adm-campo input, .adm-campo select, .adm-campo textarea, .adm-mini {
+  font: inherit; font-size: 16px; min-height: 46px; padding: 10px 12px; width: 100%;
+  border: 1.5px solid var(--preto); border-radius: 0; background: #fff; color: var(--preto);
+}
+.adm-campo textarea { min-height: 96px; resize: vertical; line-height: 1.45; }
+.adm-campo input:focus-visible, .adm-campo select:focus-visible, .adm-campo textarea:focus-visible, .adm-mini:focus-visible { outline: 2px solid var(--vermelho); outline-offset: 1px; }
+.adm-campo--erro input, .adm-campo--erro select, .adm-campo--erro textarea { border-color: var(--vinho); border-width: 2px; }
+.adm-campo__ajuda { color: var(--grafite); font-size: 13px; }
+.adm-campo__erro { color: var(--vinho); font-size: 13px; font-weight: 700; }
+.adm-check { display: flex; align-items: flex-start; gap: 10px; min-height: 44px; padding-top: 10px; }
+.adm-check input { width: 20px; height: 20px; accent-color: var(--preto); margin: 1px 0 0; flex: none; }
+.adm-check label { display: flex; flex-direction: column; font-weight: 700; font-size: 15px; cursor: pointer; }
+.adm-check small { font-weight: 400; color: var(--grafite); font-size: 13px; }
+
+/* ---------- avisos ---------- */
+.adm-alerta { padding: 14px 16px; border-left: 4px solid var(--vinho); background: rgba(142, 27, 30, 0.08); color: var(--vinho); font-weight: 700; font-size: 15px; }
+.adm-alerta--ok { border-left-color: var(--preto); background: var(--concreto-claro); color: var(--preto); }
+
+/* ---------- botões extras ---------- */
+.btn--perigo { border-color: var(--vinho); color: var(--vinho); }
+.btn--perigo:hover { background: var(--vinho); border-color: var(--vinho); color: var(--cru); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn:disabled:hover { background: transparent; color: inherit; }
+.btn--dark:disabled:hover { background: var(--preto); color: var(--cru); }
+.adm-link-botao { border: 0; background: none; padding: 8px 0; cursor: pointer; font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
+.adm-link-botao:hover { color: var(--vinho); }
+
+/* ---------- tabelas ---------- */
+.adm-tabela-wrap { overflow-x: auto; }
+.adm-tabela { width: 100%; border-collapse: collapse; font-size: 15px; }
+.adm-tabela th {
+  text-align: left; padding: 10px; border-bottom: 1.5px solid var(--preto); white-space: nowrap;
+  font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+}
+.adm-tabela td { padding: 12px 10px; border-bottom: 1px solid var(--concreto); vertical-align: middle; }
+.adm-tabela tr:hover td { background: rgba(217, 213, 205, 0.35); }
+.adm-tabela__nome { font-weight: 700; }
+.adm-tabela__nome small { display: block; font-weight: 400; color: var(--grafite); font-size: 13px; }
+.adm-miniatura { width: 56px; height: 56px; background: var(--concreto); display: flex; align-items: center; justify-content: center; }
+.adm-miniatura img { width: 100%; height: 100%; object-fit: contain; }
+.adm-miniatura span { font-family: var(--f-mono); font-size: 9px; color: var(--grafite); text-align: center; }
+
+/* ---------- selos ---------- */
+.adm-selos { display: flex; flex-wrap: wrap; gap: 6px; }
+.adm-selo {
+  display: inline-flex; align-items: center; padding: 3px 8px; white-space: nowrap;
+  font-family: var(--f-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.06em; border: 1px solid currentColor;
+}
+.adm-selo--ok { background: var(--preto); border-color: var(--preto); color: var(--cru); }
+.adm-selo--off { color: var(--grafite); }
+.adm-selo--aviso { color: var(--vinho); }
+
+/* ---------- resumo ---------- */
+.adm-numeros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 28px; }
+.adm-numero { border: 1.5px solid var(--preto); padding: 18px; display: flex; flex-direction: column; gap: 4px; }
+.adm-numero strong { font-family: var(--f-display); font-weight: 400; font-size: 52px; line-height: 1; }
+.adm-numero span { font-family: var(--f-mono); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--grafite); }
+.adm-pendencias { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.adm-pendencias li { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--concreto); }
+.adm-pendencias li::before { content: '✦'; color: var(--vermelho); margin-right: 10px; }
+.adm-pendencias li span { flex: 1; }
+
+/* ---------- fotos ---------- */
+.adm-fotos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.adm-foto { border: 1px solid var(--concreto); padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.adm-foto__img { aspect-ratio: 1 / 1; background: var(--concreto); display: flex; align-items: center; justify-content: center; }
+.adm-foto__img img { width: 100%; height: 100%; object-fit: contain; }
+.adm-foto__vazia { font-family: var(--f-mono); font-size: 12px; letter-spacing: 0.1em; color: var(--grafite); }
+.adm-arquivo { position: relative; }
+.adm-arquivo input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.adm-arquivo input:disabled { cursor: not-allowed; }
+.adm-arquivo:focus-within .btn { outline: 2px solid var(--vermelho); outline-offset: 3px; }
+
+/* ---------- tabela de medidas ---------- */
+.adm-medidas { border-collapse: collapse; }
+.adm-medidas td, .adm-medidas th { padding: 4px; }
+.adm-mini { min-height: 40px; padding: 6px 8px; font-size: 15px; min-width: 90px; }
+.adm-medidas th .adm-mini { font-family: var(--f-mono); font-size: 12px; font-weight: 700; text-transform: uppercase; }
+.adm-remover-mini { border: 0; background: none; cursor: pointer; color: var(--vinho); font-size: 20px; width: 36px; height: 36px; }
+
+/* ---------- login ---------- */
+.adm-login { min-height: 100vh; display: grid; place-items: center; background: var(--preto); padding: 16px; }
+.adm-login__caixa { background: var(--cru); width: min(420px, 100%); padding: 32px; display: flex; flex-direction: column; gap: 18px; }
+.adm-login__logo { height: 64px; width: auto; align-self: flex-start; }
+.adm-login__voltar { font-size: 14px; align-self: flex-start; padding: 8px 0; }
+
+/* ---------- celular ---------- */
+@media (max-width: 859px) {
+  .adm { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
+  .adm__lateral { position: static; height: auto; padding: 14px 16px; gap: 12px; }
+  .adm__marca img { height: 36px; }
+  .adm__nav { flex-direction: row; overflow-x: auto; gap: 0; margin: 0 -16px; padding: 0 16px; scrollbar-width: none; }
+  .adm__nav a { white-space: nowrap; border-left: 0; border-bottom: 3px solid transparent; padding: 12px 10px; }
+  .adm__nav a.active { border-bottom-color: var(--vermelho); background: none; }
+  .adm__rodape { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-top: 0; }
+  .adm__usuario small { display: none; }
+  .adm__conteudo { padding-top: 24px; }
+  .adm-grade, .adm-grade--3, .adm-fotos { grid-template-columns: minmax(0, 1fr); }
+  .adm-numeros { grid-template-columns: minmax(0, 1fr); }
+  .adm-bloco { padding: 18px; }
+  .adm-ocultar-celular { display: none; }
+}

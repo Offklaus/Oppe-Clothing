@@ -1,0 +1,140 @@
+/* ==========================================================================
+   OPPE CLOTHING — base do sistema visual
+   Tokens do brand book: preto asfalto, cru, vermelho etiqueta.
+   Anton grita · Instrument Serif fala baixo · Space Grotesk explica · Space Mono etiqueta.
+   Cada componente traz o próprio CSS ao lado do .jsx; aqui fica só o que é comum.
+   ========================================================================== */
+
+:root {
+  --preto: #0E0E0E;
+  --cru: #F2EEE3;
+  --vermelho: #E01E14;
+  --vinho: #8E1B1E;
+  --concreto: #D9D5CD;
+  --concreto-claro: #E7E2D6;
+  --grafite: #5A5650;
+  --pedra: #A8A39A;
+  --madeira: #B98A55;
+  --linha-escura: rgba(242, 238, 227, 0.2);
+
+  --f-display: 'Anton', Impact, 'Arial Narrow', sans-serif;
+  --f-serif: 'Instrument Serif', Georgia, serif;
+  --f-sans: 'Space Grotesk', system-ui, sans-serif;
+  --f-mono: 'Space Mono', ui-monospace, monospace;
+
+  --max: 1360px;
+  --gutter: clamp(16px, 4vw, 48px);
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; scroll-padding-top: 96px; }
+
+body {
+  margin: 0;
+  background: var(--cru);
+  color: var(--preto);
+  font-family: var(--f-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+
+[hidden] { display: none !important; }
+img { max-width: 100%; display: block; }
+a { color: inherit; }
+a:hover { color: var(--vinho); }
+button { font: inherit; color: inherit; }
+h1, h2, h3, p { margin: 0; }
+:focus-visible { outline: 2px solid var(--vermelho); outline-offset: 3px; }
+
+.container { max-width: var(--max); margin-inline: auto; padding-inline: var(--gutter); }
+
+.skip {
+  position: absolute; left: 16px; top: -60px; z-index: 100;
+  background: var(--preto); color: var(--cru); padding: 12px 16px;
+  font-family: var(--f-mono); font-size: 13px; text-decoration: none;
+}
+.skip:focus { top: 12px; color: var(--cru); }
+
+.visually-hidden {
+  position: absolute !important; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0; padding: 0; margin: -1px;
+}
+
+/* ---------- Tipos ---------- */
+.eyebrow {
+  font-family: var(--f-mono); font-size: 13px; letter-spacing: 0.14em;
+  color: var(--vinho); text-transform: uppercase;
+}
+.eyebrow--dark { color: var(--pedra); }
+.display {
+  font-family: var(--f-display); font-weight: 400; text-transform: uppercase;
+  line-height: 0.9; letter-spacing: 0.005em;
+}
+.serif { font-family: var(--f-serif); font-style: italic; font-weight: 400; }
+.h2 { font-size: clamp(48px, 6vw, 88px); }
+.estrela { flex: none; display: inline-block; vertical-align: middle; }
+
+.section-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 24px; }
+.section-head__title { display: flex; flex-direction: column; gap: 12px; }
+
+.nao-encontrada { padding-block: 96px; display: flex; flex-direction: column; gap: 24px; align-items: flex-start; }
+.nao-encontrada__frase { font-size: 30px; line-height: 1.2; }
+
+.aviso { margin-top: 40px; display: flex; flex-wrap: wrap; align-items: center; gap: 16px; font-size: 17px; color: var(--grafite); }
+
+/* ---------- Botões ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  min-height: 44px; padding: 0 22px;
+  border: 1.5px solid var(--preto); background: transparent; color: var(--preto);
+  font-family: var(--f-mono); font-size: 13px; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; text-decoration: none; cursor: pointer;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+.btn:hover { background: var(--preto); color: var(--cru); }
+.btn--dark { background: var(--preto); color: var(--cru); }
+.btn--dark:hover { background: var(--vinho); border-color: var(--vinho); color: var(--cru); }
+.btn--light { border-color: var(--cru); color: var(--cru); }
+.btn--light:hover { background: var(--cru); color: var(--preto); }
+.btn--cru { background: var(--cru); border-color: var(--cru); color: var(--preto); }
+.btn--cru:hover { background: var(--concreto); border-color: var(--concreto); color: var(--preto); }
+.btn--lg { min-height: 52px; padding: 0 28px; font-size: 14px; }
+.btn--xl { min-height: 60px; font-size: 15px; letter-spacing: 0.12em; }
+.btn--block { display: flex; width: 100%; }
+
+.icon-btn {
+  width: 44px; height: 44px; flex: none; padding: 0; cursor: pointer;
+  border: 1.5px solid var(--preto); background: transparent;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.icon-btn:hover { background: var(--concreto); }
+
+/* ---------- Selo (etiqueta vermelha com o logo) ---------- */
+.selo { flex: none; background: var(--vermelho); display: flex; align-items: center; justify-content: center; }
+.selo img { width: 80%; height: auto; }
+.selo--72 { width: 72px; height: 72px; }
+.selo--64 { width: 64px; height: 64px; }
+.selo--56 { width: 56px; height: 56px; }
+.selo--52 { width: 52px; height: 52px; }
+
+/* ---------- Diálogos ---------- */
+dialog { color: var(--preto); }
+dialog::backdrop { background: rgba(14, 14, 14, 0.55); }
+
+@media (max-width: 759px) {
+  .h2 { font-size: 48px; }
+  .section-head { flex-direction: column; align-items: stretch; gap: 20px; }
+  .section-head__title { gap: 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important; animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

@@ -1,0 +1,164 @@
+[
+  {
+    "id": "its-never-luck",
+    "nome": "It's Never Luck",
+    "cor": "Preta",
+    "colecao": "Faith",
+    "tag": "NOVO",
+    "preco": null,
+    "faces": [
+      { "img": "/images/camisetas/its-never-luck-costas.webp", "lado": "Costas" },
+      { "img": "/images/camisetas/base-preta-frente.webp", "lado": "Frente" }
+    ]
+  },
+  {
+    "id": "citizen-of-heaven-preta",
+    "nome": "Citizen of Heaven",
+    "cor": "Preta / Ouro",
+    "colecao": "Faith",
+    "tag": "NOVO",
+    "preco": null,
+    "faces": [
+      { "img": "/images/camisetas/citizen-of-heaven-preta-costas.webp", "lado": "Costas" },
+      { "img": "/images/camisetas/base-preta-frente.webp", "lado": "Frente" }
+    ]
+  },
+  {
+    "id": "contra-o-mundo",
+    "nome": "Contra o Mundo",
+    "cor": "Preta / Rosa",
+    "colecao": "Faith",
+    "tag": "",
+    "preco": null,
+    "faces": [
+      { "img": "/images/camisetas/contra-o-mundo-costas.webp", "lado": "Costas" },
+      { "img": "/images/camisetas/base-preta-frente.webp", "lado": "Frente" }
+    ]
+  },
+  {
+    "id": "i-won-again",
+    "nome": "I Won Again",
+    "cor": "Cru / Vinho",
+    "descricaoCor": "Cru com estampa vinho",
+    "colecao": "Faith",
+    "tag": "",
+    "preco": null,
+    "frase": "“Do not be overcome by evil, but overcome evil with good.”",
+    "referencia": "ROMANOS 12:21",
+    "estampa": "Frente: logo no peito e “OF” na barra. Costas: “I won again” e “FE”.",
+    "faces": [
+      { "img": "/images/camisetas/i-won-again-costas.webp", "lado": "Costas" },
+      { "img": "/images/camisetas/i-won-again-frente.webp", "lado": "Frente" }
+    ]
+  },
+  {
+    "id": "i-was-blind",
+    "nome": "I Was Blind",
+    "cor": "Cru / Vermelho",
+    "colecao": "Faith",
+    "tag": "NOVO",
+    "preco": null,
+    "faces": [
+      { "img": "/images/camisetas/i-was-blind-costas.webp", "lado": "Costas" },
+      { "img": "/images/camisetas/base-cru-frente.webp", "lado": "Frente" }
+    ]
+  },
+  {
+    "id": "life-is-good",
+    "nome": "Life is Good",
+    "cor": "Preta",
+    "colecao": "Graphic",
+    "tag": "",
+    "preco": null,
+    "faces": [
+      { "img": "/images/camisetas/life-is-good-costas.webp", "lado": "Costas" },
+      { "img": "/images/camisetas/base-preta-frente.webp", "lado": "Frente" }
+    ]
+  },
+  {
+    "id": "the-game",
+    "nome": "The Game",
+    "cor": "Preta / Vermelho",
+    "colecao": "Graphic",
+    "tag": "",
+    "preco": null,
+    "faces": [
+      { "img": "/images/camisetas/the-game-frente.webp", "lado": "Frente" },
+      { "img": "/images/camisetas/base-preta-costas.webp", "lado": "Costas" }
+    ]
+  },
+  {
+    "id": "fall",
+    "nome": "Fall",
+    "cor": "Cru / Preto",
+    "colecao": "Graphic",
+    "tag": "",
+    "preco": null,
+    "faces": [
+      { "img": "/images/camisetas/fall-frente.webp", "lado": "Frente" },
+      { "img": "/images/camisetas/base-cru-costas.webp", "lado": "Costas" }
+    ]
+  },
+  {
+    "id": "the-key",
+    "nome": "The Key",
+    "cor": "Cru / Vermelho",
+    "colecao": "Key & Heart",
+    "tag": "",
+    "preco": null,
+    "frase": "In a world full of locks, I was lucky enough to find the only key that fits.",
+    "faces": [
+      { "img": "/images/camisetas/the-key-costas.webp", "lado": "Costas" },
+      { "img": "/images/camisetas/base-cru-frente.webp", "lado": "Frente" }
+    ]
+  },
+  {
+    "id": "to-my-heart",
+    "nome": "To My Heart",
+    "cor": "Cru / Vermelho",
+    "colecao": "Key & Heart",
+    "tag": "",
+    "preco": null,
+    "frase": "In a world full of locks, I was lucky enough to find the only key that fits.",
+    "faces": [
+      { "img": "/images/camisetas/to-my-heart-costas.webp", "lado": "Costas" },
+      { "img": "/images/camisetas/base-cru-frente.webp", "lado": "Frente" }
+    ]
+  },
+  {
+    "id": "flame",
+    "nome": "Flame",
+    "cor": "Preta",
+    "colecao": "Logo",
+    "tag": "",
+    "preco": null,
+    "faces": [
+      { "img": "/images/camisetas/flame-frente.webp", "lado": "Frente" },
+      { "img": "/images/camisetas/base-preta-costas.webp", "lado": "Costas" }
+    ]
+  },
+  {
+    "id": "drip",
+    "nome": "Drip",
+    "cor": "Preta",
+    "colecao": "Logo",
+    "tag": "",
+    "preco": null,
+    "faces": [
+      { "img": "/images/camisetas/drip-frente.webp", "lado": "Frente" },
+      { "img": "/images/camisetas/base-preta-costas.webp", "lado": "Costas" }
+    ]
+  },
+  {
+    "id": "chaos-also-builds",
+    "nome": "Chaos Also Builds",
+    "cor": "Preta",
+    "colecao": "Logo",
+    "tag": "",
+    "preco": null,
+    "faces": [
+      { "img": "/images/camisetas/chaos-also-builds-frente.webp", "lado": "Frente" },
+      { "img": "/images/camisetas/base-preta-costas.webp", "lado": "Costas" }
+    ]
+  }
+]

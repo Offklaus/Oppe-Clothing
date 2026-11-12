@@ -1,0 +1,37 @@
+.footer { background: var(--preto); color: var(--cru); }
+.footer a { color: var(--cru); }
+.footer a:hover { color: var(--pedra); }
+.footer__inner { padding-block: 64px 32px; display: flex; flex-direction: column; gap: 48px; }
+.footer__top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 40px; }
+.footer__logo { height: 104px; width: auto; }
+.footer__col { display: flex; flex-direction: column; gap: 6px; }
+.footer__col a, .footer__texto { font-size: 17px; padding: 10px 0; }
+.footer__label { font-family: var(--f-mono); font-size: 12px; letter-spacing: 0.14em; color: var(--pedra); }
+.footer__wa { display: none; }
+.footer__bottom {
+  border-top: 1px solid var(--linha-escura); padding-top: 20px;
+  font-family: var(--f-mono); font-size: 12px; letter-spacing: 0.12em; color: var(--pedra);
+}
+
+.footer--compact .footer__inner {
+  padding-block: 40px; flex-direction: row; flex-wrap: wrap;
+  justify-content: space-between; align-items: center; gap: 24px;
+}
+.footer--compact .footer__logo { height: 72px; }
+.footer--compact .footer__bottom { border: 0; padding: 0; }
+
+@media (max-width: 759px) {
+  .footer__inner { padding-block: 44px 28px; gap: 28px; }
+  .footer__top {
+    display: grid; grid-template-columns: 1fr auto;
+    grid-template-areas: "logo selo" "wa wa" "contato contato"; gap: 28px;
+  }
+  .footer__top .footer__logo { grid-area: logo; height: 76px; }
+  .footer__selo { grid-area: selo; width: 52px; height: 52px; }
+  .footer__wa { grid-area: wa; display: flex; min-height: 56px; }
+  .footer__col--contato { grid-area: contato; }
+  .footer__col--nav { display: none; }
+  .footer__col a, .footer__texto { font-size: 16px; padding: 11px 0; }
+  .footer__bottom { font-size: 11px; letter-spacing: 0.1em; padding-top: 18px; }
+  .footer--compact .footer__inner { flex-direction: column; align-items: flex-start; }
+}

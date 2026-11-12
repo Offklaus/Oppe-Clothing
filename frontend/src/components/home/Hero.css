@@ -1,0 +1,41 @@
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+  grid-template-rows: 1fr auto auto auto auto auto 1fr;
+  grid-template-areas:
+    ".     varal"
+    "tag   varal"
+    "title varal"
+    "verse varal"
+    "text  varal"
+    "cta   varal"
+    ".     varal";
+  column-gap: 40px; row-gap: 26px;
+  padding-block: 56px 64px;
+}
+.hero__tag { grid-area: tag; }
+.hero__title { grid-area: title; font-size: clamp(60px, 7.8vw, 112px); line-height: 0.86; }
+.hero__verse { grid-area: verse; font-size: clamp(26px, 2.6vw, 36px); line-height: 1.15; }
+.hero__text { grid-area: text; max-width: 460px; font-size: 17px; line-height: 1.55; color: var(--grafite); }
+.hero__cta { grid-area: cta; display: flex; flex-wrap: wrap; gap: 12px; }
+
+/* o varal precisa de ~560px de largura para caber o painel em uma linha */
+@media (max-width: 1119px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    grid-template-areas: "tag" "title" "verse" "varal" "text" "cta";
+    row-gap: 20px; padding-block: 40px 48px;
+  }
+  .hero__title { font-size: clamp(56px, 13vw, 120px); }
+}
+
+@media (max-width: 759px) {
+  .hero { row-gap: 18px; padding-block: 28px 32px; }
+  .hero__tag { font-size: 12px; letter-spacing: 0.12em; }
+  .hero__title { font-size: clamp(56px, 18.5vw, 96px); }
+  .hero__verse { font-size: 26px; }
+  .hero__text { font-size: 16px; }
+  .hero__cta { flex-direction: column; gap: 10px; }
+  .hero__cta .btn { width: 100%; }
+}

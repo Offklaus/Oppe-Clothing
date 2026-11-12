@@ -1,0 +1,42 @@
+{
+  "nome": "Oppe Clothing",
+  "instagram": "oppeclothing",
+  "precoPadrao": null,
+  "tamanhos": ["P", "M", "G", "GG", "XGG"],
+  "modelagem": "Oversized, ombro caído, gola canelada.",
+  "malha": "[COMPOSIÇÃO E GRAMATURA]",
+  "tecnicaEstampa": "",
+  "cuidados": "Lavar do avesso, não passar ferro sobre a estampa.",
+  "medidas": {
+    "colunas": ["Tamanho", "Largura (cm)", "Comprimento (cm)"],
+    "linhas": [
+      ["P", "[CM]", "[CM]"],
+      ["M", "[CM]", "[CM]"],
+      ["G", "[CM]", "[CM]"],
+      ["GG", "[CM]", "[CM]"],
+      ["XGG", "[CM]", "[CM]"]
+    ]
+  },
+  "sobre": "[Conte aqui a história da Oppe em duas ou três frases: quem criou, por que nasceu e o que a marca quer dizer na rua.]",
+  "colecoes": {
+    "Faith": "DROP 01 ✦ FAITH COLLECTION",
+    "Graphic": "GRAPHIC ✦ OPPE CLOTHING",
+    "Logo": "LOGO ✦ OPPE CLOTHING",
+    "Key & Heart": "COLEÇÃO ✦ PARA DOIS"
+  },
+  "textosColecao": {
+    "Key & Heart": {
+      "frase": "In a world full of locks, I was lucky enough to find the only key that fits.",
+      "descricao": "Uma chave, um cadeado. Duas peças que se completam, feitas pra usar junto."
+    }
+  },
+  "colecaoDestaque": "Key & Heart",
+  "filtros": ["Todas", "Faith", "Graphic", "Logo", "Key & Heart"],
+  "destaqueVaral": "i-won-again",
+  "mensagens": {
+    "saudacao": "Olá, Oppe Clothing! ✦",
+    "pedido": "Quero fazer um pedido:",
+    "fechamento": "Pode me passar o valor do frete e as formas de pagamento?",
+    "contato": "Olá, Oppe Clothing! ✦ Vim pelo site e quero saber mais sobre as peças."
+  }
+}
