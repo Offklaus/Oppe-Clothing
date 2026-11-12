@@ -6,6 +6,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { ErroHttp } from './erros.js';
 import { limitador } from './seguranca/middlewares.js';
+import { origemDasFotos } from './servicos/armazenamento.js';
 import { rotasPublicas } from './rotas/publico.js';
 import { rotasAdmin } from './rotas/admin.js';
 
@@ -27,7 +28,7 @@ export function criarApp(ctx) {
         'script-src': ["'self'"],
         'style-src': ["'self'", 'https://fonts.googleapis.com'],
         'font-src': ["'self'", 'https://fonts.gstatic.com'],
-        'img-src': ["'self'", 'data:', 'blob:'],
+        'img-src': ["'self'", 'data:', 'blob:', ...(origemDasFotos() ? [origemDasFotos()] : [])],
         'connect-src': ["'self'"],
         'object-src': ["'none'"],
         'frame-ancestors': ["'none'"],

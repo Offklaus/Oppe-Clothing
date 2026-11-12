@@ -2,15 +2,15 @@ import { config } from './config.js';
 import { criarPool } from './db/pool.js';
 import { migrar } from './db/migrar.js';
 import { semearSeVazio } from './db/semear.js';
-import { garantirPastaDeEnvios } from './servicos/imagens.js';
+import { armazenamento } from './servicos/armazenamento.js';
 import { criarApp } from './app.js';
 
-const pool = criarPool(config.databaseUrl);
+const pool = criarPool(config.databaseUrl, { caCert: config.databaseCaCert });
 
 const aplicadas = await migrar(pool);
 if (aplicadas.length) console.log(`Migrações aplicadas: ${aplicadas.join(', ')}`);
 if (await semearSeVazio(pool, { whatsapp: process.env.WHATSAPP_NUMERO })) console.log('Catálogo inicial importado para o banco.');
-await garantirPastaDeEnvios(config.pastaImagens);
+console.log(`Fotos: ${await armazenamento().verificar()}`);
 
 const { rows: [{ admins }] } = await pool.query('SELECT count(*)::int AS admins FROM usuarios_admin WHERE ativo');
 

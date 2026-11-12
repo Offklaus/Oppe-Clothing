@@ -12,7 +12,7 @@ if (!COMANDOS.includes(comando)) {
   process.exit(1);
 }
 
-const pool = criarPool(process.argv.includes('--teste') ? config.databaseUrlTeste : config.databaseUrl);
+const pool = criarPool(process.argv.includes('--teste') ? config.databaseUrlTeste : config.databaseUrl, { caCert: config.databaseCaCert });
 try {
   if (comando !== 'semear') {
     const feitas = await migrar(pool);

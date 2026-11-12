@@ -3,12 +3,13 @@ import * as repoProdutos from '../repos/produtos.js';
 import * as repoColecoes from '../repos/colecoes.js';
 import * as repoLoja from '../repos/loja.js';
 import { ErroHttp, naoEncontrado } from '../erros.js';
+import { urlDaImagem } from './armazenamento.js';
 import {
   LIMITE_QTD, centavosParaCampo, formatarWhatsapp, gerarSlug, normalizarInstagram, normalizarWhatsapp,
   paraCentavos, plural, precoTexto, temMarcador
 } from './formatos.js';
 
-const urlImagem = (arquivo) => `/images/${arquivo}`;
+const urlImagem = urlDaImagem;
 const camposInvalidos = (campos) => new ErroHttp(400, 'Confira os campos destacados.', campos);
 
 /** Preço da peça: o dela, ou o preço padrão da loja. */

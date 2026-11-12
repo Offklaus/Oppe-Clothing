@@ -104,7 +104,7 @@ export function rotasAdmin({ pool, config, limiteLogin = 10 }) {
   r.delete('/produtos/:id', async (req, res) => {
     const id = idNumerico(req);
     const removido = await catalogo.removerProduto(pool, id);
-    for (const arquivo of removido.arquivos) await imagens.apagarSeSemUso(pool, config.pastaImagens, arquivo);
+    for (const arquivo of removido.arquivos) await imagens.apagarSeSemUso(pool, arquivo);
     await registrar(req, 'produto_removido', 'produto', id, { nome: removido.nome, cor: removido.cor });
     res.status(204).end();
   });
@@ -114,7 +114,7 @@ export function rotasAdmin({ pool, config, limiteLogin = 10 }) {
     const id = idNumerico(req);
     const posicao = validar(esquemas.posicaoImagem, req.params.posicao);
     const { lado } = validar(esquemas.esquemaLado, { lado: req.body?.lado });
-    if (req.file) await imagens.salvarFoto(pool, config.pastaImagens, id, posicao, req.file.buffer, lado);
+    if (req.file) await imagens.salvarFoto(pool, id, posicao, req.file.buffer, lado);
     else await imagens.alterarLado(pool, id, posicao, lado);
     const p = await catalogo.produtoAdmin(pool, id);
     await registrar(req, req.file ? 'foto_enviada' : 'foto_editada', 'produto', id, { nome: p.nome, posicao, lado });
@@ -123,7 +123,7 @@ export function rotasAdmin({ pool, config, limiteLogin = 10 }) {
 
   r.delete('/produtos/:id/imagens/:posicao', async (req, res) => {
     const id = idNumerico(req);
-    await imagens.removerFoto(pool, config.pastaImagens, id, validar(esquemas.posicaoImagem, req.params.posicao));
+    await imagens.removerFoto(pool, id, validar(esquemas.posicaoImagem, req.params.posicao));
     const p = await catalogo.produtoAdmin(pool, id);
     await registrar(req, 'foto_removida', 'produto', id, { nome: p.nome });
     res.json(p);

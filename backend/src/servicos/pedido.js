@@ -4,6 +4,7 @@ import * as repoProdutos from '../repos/produtos.js';
 import * as repoLoja from '../repos/loja.js';
 import { ErroHttp } from '../erros.js';
 import { precoDoProduto } from './catalogo.js';
+import { urlDaImagem } from './armazenamento.js';
 import { LIMITE_QTD, formatarBRL, linkWhatsapp, plural, precoTexto } from './formatos.js';
 
 export const LIMITE_ITENS = 50;
@@ -97,7 +98,7 @@ export async function previa(db, itens) {
         cor: produto.cor,
         tamanho,
         qtd,
-        imagem: `/images/${foto.arquivo}`,
+        imagem: urlDaImagem(foto.arquivo),
         precoTexto: precoTexto(centavos),
         podeAumentar: qtd < LIMITE_QTD
       };

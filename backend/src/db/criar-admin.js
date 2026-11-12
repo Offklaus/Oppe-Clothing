@@ -40,7 +40,7 @@ function perguntarSenha(texto) {
   });
 }
 
-const pool = criarPool(config.databaseUrl);
+const pool = criarPool(config.databaseUrl, { caCert: config.databaseCaCert });
 try {
   await migrar(pool);
   const email = process.env.ADMIN_EMAIL || await perguntar('E-mail do admin: ');
