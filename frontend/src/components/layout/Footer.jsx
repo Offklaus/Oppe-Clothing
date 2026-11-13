@@ -16,7 +16,9 @@ export default function Footer({ compacto = false }) {
       <footer className="footer footer--compact">
         <div className="container footer__inner">
           <img className="footer__logo" src={logoCru} alt="Oppe Clothing" width="91" height="72" loading="lazy" />
-          <span className="footer__bottom">© {ano} OPPE CLOTHING ✦ STREETWEAR COM FÉ</span>
+          <span className="footer__bottom">
+            © {ano} OPPE CLOTHING ✦ STREETWEAR COM FÉ <span aria-hidden="true">·</span> <Link to="/privacidade">PRIVACIDADE</Link>
+          </span>
           <Selo tamanho={56} />
         </div>
       </footer>
@@ -54,7 +56,9 @@ export default function Footer({ compacto = false }) {
 
           <Selo tamanho={72} className="footer__selo" />
         </div>
-        <div className="footer__bottom">© {ano} OPPE CLOTHING ✦ STREETWEAR COM FÉ</div>
+        <div className="footer__bottom">
+          © {ano} OPPE CLOTHING ✦ STREETWEAR COM FÉ <span aria-hidden="true">·</span> <Link to="/privacidade">POLÍTICA DE PRIVACIDADE</Link>
+        </div>
       </div>
     </footer>
   );

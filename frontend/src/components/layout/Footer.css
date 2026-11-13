@@ -12,6 +12,8 @@
   border-top: 1px solid var(--linha-escura); padding-top: 20px;
   font-family: var(--f-mono); font-size: 12px; letter-spacing: 0.12em; color: var(--pedra);
 }
+.footer .footer__bottom a { color: var(--pedra); text-underline-offset: 3px; display: inline-block; padding: 6px 0; }
+.footer .footer__bottom a:hover { color: var(--cru); }
 
 .footer--compact .footer__inner {
   padding-block: 40px; flex-direction: row; flex-wrap: wrap;

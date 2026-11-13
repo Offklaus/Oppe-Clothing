@@ -117,7 +117,10 @@ export default function FinalizarPedido({ itens, previa, onVoltar, onCriado }) {
           </div>
         </fieldset>
 
-        <p className="bag__note">Seus dados ficam só com a Oppe Clothing e servem para combinar o pagamento e entregar o pedido.</p>
+        <p className="bag__note">
+          Seus dados ficam só com a Oppe Clothing e servem para combinar o pagamento e entregar o pedido.{' '}
+          <a href="/privacidade" target="_blank" rel="noopener">Política de privacidade</a>
+        </p>
       </div>
 
       <div className="bag__foot">
