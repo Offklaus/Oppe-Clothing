@@ -2,6 +2,7 @@
 import * as repoProdutos from '../repos/produtos.js';
 import * as repoColecoes from '../repos/colecoes.js';
 import * as repoLoja from '../repos/loja.js';
+import * as repoPedidos from '../repos/pedidos.js';
 import { ErroHttp, naoEncontrado } from '../erros.js';
 import { urlDaImagem } from './armazenamento.js';
 import {
@@ -343,11 +344,14 @@ export async function salvarLoja(db, dados) {
 // ======================= Painel: resumo =======================
 
 export async function resumoAdmin(db, { siteUrl, producao }) {
-  const [loja, produtos, colecoes] = await Promise.all([
-    repoLoja.obter(db), repoProdutos.listarTodos(db), repoColecoes.listarTodas(db)
+  const [loja, produtos, colecoes, pedidosPorStatus] = await Promise.all([
+    repoLoja.obter(db), repoProdutos.listarTodos(db), repoColecoes.listarTodas(db), repoPedidos.contarPorStatus(db)
   ]);
   const pendencias = [];
   const avisar = (texto, link) => pendencias.push({ texto, link });
+  const pedidosNovos = pedidosPorStatus.novo ?? 0;
+
+  if (pedidosNovos) avisar(`${plural(pedidosNovos, 'pedido novo esperando', 'pedidos novos esperando')} atendimento.`, '/admin/pedidos?status=novo');
 
   if (!loja.whatsapp_numero) avisar('Cadastre o WhatsApp que recebe os pedidos.', '/admin/loja');
   const semPreco = produtos.filter((p) => precoDoProduto(p, loja) == null).length;
@@ -361,6 +365,7 @@ export async function resumoAdmin(db, { siteUrl, producao }) {
 
   return {
     numeros: {
+      pedidosNovos,
       pecasNoSite: produtos.filter(visivelNoSite).length,
       pecasOcultas: produtos.filter((p) => !visivelNoSite(p)).length,
       colecoes: colecoes.length

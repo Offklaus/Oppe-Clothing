@@ -18,6 +18,9 @@ export default function Painel() {
       {dados && (
         <>
           <div className="adm-numeros">
+            <Link className="adm-numero adm-numero--link" to="/admin/pedidos?status=novo">
+              <strong>{dados.numeros.pedidosNovos}</strong><span>Pedidos novos →</span>
+            </Link>
             <div className="adm-numero"><strong>{dados.numeros.pecasNoSite}</strong><span>Peças no site</span></div>
             <div className="adm-numero"><strong>{dados.numeros.pecasOcultas}</strong><span>Peças ocultas</span></div>
             <div className="adm-numero"><strong>{dados.numeros.colecoes}</strong><span>Coleções</span></div>

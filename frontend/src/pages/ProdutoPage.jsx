@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { useSacola } from '../context/SacolaContext.jsx';
-import { buscarProduto, linkPedidoWhatsapp } from '../api/client.js';
+import { buscarProduto, linkPedidoWhatsapp, novaChavePedido } from '../api/client.js';
 import { useDados } from '../hooks/useDados.js';
 import Estrela from '../components/ui/Estrela.jsx';
 import Galeria from '../components/produto/Galeria.jsx';
@@ -39,6 +39,8 @@ function DetalheProduto({ produto }) {
   const [erroTamanho, setErroTamanho] = useState(false);
   const [medidasAbertas, setMedidasAbertas] = useState(false);
   const refPrimeiroTamanho = useRef(null);
+  // um pedido por peça + tamanho: tocar de novo no botão reabre o mesmo pedido
+  const chavePedido = useMemo(() => novaChavePedido(), [tamanho]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     document.title = `${produto.nome} (${produto.cor}) — Oppe Clothing`;
@@ -87,7 +89,7 @@ function DetalheProduto({ produto }) {
           <div className="produto__acoes">
             <a
               className="btn btn--dark btn--xl btn--block"
-              href={tamanho ? linkPedidoWhatsapp([{ id: produto.id, tamanho, qtd: 1 }]) : '#'}
+              href={tamanho ? linkPedidoWhatsapp([{ id: produto.id, tamanho, qtd: 1 }], chavePedido) : '#'}
               target="_blank"
               rel="noopener"
               onClick={(e) => { if (!exigirTamanho()) e.preventDefault(); }}

@@ -1,5 +1,6 @@
 // Esquemas de entrada do painel. Campos desconhecidos são recusados (strictObject).
 import { z } from 'zod';
+import { STATUS } from '../servicos/pedido.js';
 
 const texto = (max, rotulo) => z.string({ error: `${rotulo}: valor inválido.` }).trim().max(max, `${rotulo}: no máximo ${max} caracteres.`);
 const obrigatorio = (max, rotulo) => texto(max, rotulo).min(1, `Preencha: ${rotulo.toLowerCase()}.`);
@@ -90,6 +91,25 @@ export const esquemaTrocaSenha = z.strictObject({
 });
 
 export const esquemaNovaSenha = z.strictObject({ novaSenha: z.string().max(128) });
+
+const STATUS_PEDIDO = Object.keys(STATUS);
+
+/** Alteração de pedido no painel: só os campos enviados mudam. */
+export const esquemaPedido = z.strictObject({
+  status: z.enum(STATUS_PEDIDO, { error: 'Escolha uma situação válida.' }).optional(),
+  clienteNome: texto(80, 'Nome do cliente').optional(),
+  clienteContato: texto(80, 'Contato').optional(),
+  observacao: texto(1000, 'Observações').optional()
+});
+
+/** Filtros da lista de pedidos (vêm da URL; valor estranho vira "sem filtro"). */
+export const esquemaFiltroPedidos = z.object({
+  status: z.enum(STATUS_PEDIDO).optional().catch(undefined),
+  busca: z.string().trim().max(40).optional().catch(undefined)
+});
+
+/** Chave do link de pedido, gerada pelo site (evita pedido repetido). */
+export const chavePedido = z.uuid();
 
 // ids do banco são "integer": acima disso a consulta falharia com erro interno
 export const idNumerico = z.coerce.number().int().positive().max(2_147_483_647);

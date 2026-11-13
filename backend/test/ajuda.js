@@ -12,8 +12,8 @@ export async function prepararBanco() {
   if (!config.databaseUrlTeste) throw new Error('Defina DATABASE_URL_TESTE em backend/.env para rodar os testes.');
   const pool = criarPool(config.databaseUrlTeste);
   await migrar(pool);
-  await pool.query(`TRUNCATE auditoria, sessoes_admin, usuarios_admin, produto_imagens, produtos, colecoes, configuracoes_loja
-                    RESTART IDENTITY CASCADE`);
+  await pool.query(`TRUNCATE auditoria, sessoes_admin, usuarios_admin, pedido_itens, pedidos, produto_imagens, produtos,
+                    colecoes, configuracoes_loja RESTART IDENTITY CASCADE`);
   await semearSeVazio(pool, { whatsapp: '5535997653327' });
   return pool;
 }

@@ -11,6 +11,8 @@ import Loja from './paginas/Loja.jsx';
 import Usuarios from './paginas/Usuarios.jsx';
 import Conta from './paginas/Conta.jsx';
 import Atividade from './paginas/Atividade.jsx';
+import Pedidos from './paginas/Pedidos.jsx';
+import PedidoDetalhe from './paginas/PedidoDetalhe.jsx';
 import './admin.css';
 
 /** Painel em /admin. Carregado sob demanda: o código do painel não vai para quem só visita o site. */
@@ -40,6 +42,8 @@ function Portao() {
     <Layout>
       <Routes>
         <Route index element={<Painel />} />
+        <Route path="pedidos" element={<Pedidos />} />
+        <Route path="pedidos/:id" element={<PedidoDetalhe />} />
         <Route path="produtos" element={<Produtos />} />
         <Route path="produtos/novo" element={<ProdutoForm />} />
         <Route path="produtos/:id" element={<ProdutoForm />} />

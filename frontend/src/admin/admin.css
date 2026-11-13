@@ -104,8 +104,55 @@
 .adm-selo--off { color: var(--grafite); }
 .adm-selo--aviso { color: var(--vinho); }
 
+/* ---------- pedidos ---------- */
+.adm-intro { margin: -12px 0 20px; max-width: 70ch; }
+.adm-vazio { padding: 32px 0; }
+.adm-barra { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 18px; }
+.adm-filtros { display: flex; flex-wrap: wrap; gap: 6px; }
+.adm-filtro {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 6px 12px; cursor: pointer;
+  border: 1.5px solid var(--preto); background: transparent; color: var(--preto);
+  font-family: var(--f-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+}
+.adm-filtro span { font-weight: 400; color: var(--grafite); }
+.adm-filtro:hover { background: var(--concreto); }
+.adm-filtro[aria-pressed="true"] { background: var(--preto); color: var(--cru); }
+.adm-filtro[aria-pressed="true"] span { color: var(--pedra); }
+.adm-busca { display: flex; align-items: center; gap: 8px; }
+.adm-busca .adm-mini { min-width: 200px; min-height: 40px; }
+.adm-codigo { font-family: var(--f-mono); letter-spacing: 0.06em; }
+.adm-status--novo { background: var(--vermelho); border-color: var(--vermelho); color: #fff; }
+.adm-status--em_conversa { color: var(--vinho); }
+.adm-status--pago, .adm-status--enviado { background: var(--preto); border-color: var(--preto); color: var(--cru); }
+.adm-status--entregue { color: var(--grafite); }
+.adm-status--cancelado { color: var(--grafite); text-decoration: line-through; }
+
+.adm-pedido { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 340px); gap: 24px; align-items: start; }
+@media (max-width: 1099px) {
+  .adm-pedido { grid-template-columns: minmax(0, 1fr); }
+  .adm-pedido__lateral { position: static; }
+}
+.adm-pedido__principal { display: flex; flex-direction: column; min-width: 0; }
+.adm-pedido__lateral { position: sticky; top: 24px; }
+.adm-itens { list-style: none; margin: 0; padding: 0; }
+.adm-item { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--concreto); }
+.adm-item__info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.adm-item__info .adm-texto { font-size: 14px; }
+.adm-item__links { display: flex; gap: 14px; font-size: 13px; }
+.adm-item__subtotal { font-family: var(--f-mono); font-weight: 700; white-space: nowrap; }
+.adm-total { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--f-mono); }
+.adm-total span { font-size: 12px; font-weight: 700; letter-spacing: 0.12em; }
+.adm-total strong { font-size: 22px; }
+.adm-mensagem {
+  margin: 0; padding: 16px; background: #fff; border: 1px solid var(--concreto);
+  white-space: pre-wrap; word-break: break-word; font-family: var(--f-mono); font-size: 13px; line-height: 1.55;
+}
+
 /* ---------- resumo ---------- */
-.adm-numeros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 28px; }
+.adm-numeros { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; margin-bottom: 28px; }
+.adm-numero--link { text-decoration: none; color: var(--preto); }
+.adm-numero--link:hover { background: var(--preto); color: var(--cru); }
+.adm-numero--link:hover span { color: var(--pedra); }
 .adm-numero { border: 1.5px solid var(--preto); padding: 18px; display: flex; flex-direction: column; gap: 4px; }
 .adm-numero strong { font-family: var(--f-display); font-weight: 400; font-size: 52px; line-height: 1; }
 .adm-numero span { font-family: var(--f-mono); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--grafite); }
@@ -149,7 +196,10 @@
   .adm__rodape { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-top: 0; }
   .adm__usuario small { display: none; }
   .adm__conteudo { padding-top: 24px; }
-  .adm-grade, .adm-grade--3, .adm-fotos { grid-template-columns: minmax(0, 1fr); }
+  .adm-grade, .adm-grade--3, .adm-fotos, .adm-pedido { grid-template-columns: minmax(0, 1fr); }
+  .adm-pedido__lateral { position: static; }
+  .adm-busca { width: 100%; }
+  .adm-busca .adm-mini { min-width: 0; flex: 1; }
   .adm-numeros { grid-template-columns: minmax(0, 1fr); }
   .adm-bloco { padding: 18px; }
   .adm-ocultar-celular { display: none; }

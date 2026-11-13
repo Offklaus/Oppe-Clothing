@@ -2,6 +2,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import sharp from 'sharp';
 import { existsSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { config, montarConfig } from '../src/config.js';
@@ -41,7 +42,7 @@ test('a senha fica guardada só como hash Argon2id', async () => {
 
 test('o painel exige login', async () => {
   const anonimo = clienteAdmin(srv.base);
-  for (const caminho of ['/sessao', '/resumo', '/produtos', '/colecoes', '/loja', '/usuarios', '/auditoria']) {
+  for (const caminho of ['/sessao', '/resumo', '/produtos', '/colecoes', '/loja', '/usuarios', '/auditoria', '/pedidos', '/pedidos/1']) {
     assert.equal((await anonimo.pedir('GET', caminho)).status, 401, caminho);
   }
   assert.equal((await anonimo.pedir('POST', '/produtos', { nome: 'X' })).status, 401);
@@ -277,6 +278,63 @@ test('id fora do intervalo do banco responde 400, não erro interno', async () =
   assert.equal((await admin.pedir('GET', '/produtos/99999999999')).status, 400);
   assert.equal((await admin.pedir('DELETE', '/colecoes/99999999999')).status, 400);
   assert.equal((await admin.pedir('GET', '/produtos/1.5')).status, 400);
+});
+
+test('pedidos: o painel lista, filtra, mostra e atualiza; o cliente nunca vê', async () => {
+  const fazerPedido = async (itens) => {
+    const res = await fetch(`${srv.base}/api/pedidos/whatsapp?itens=${encodeURIComponent(itens)}&chave=${randomUUID()}`, { redirect: 'manual' });
+    return new URL(res.headers.get('location')).searchParams.get('text').match(/#([2-9A-HJ-NP-Z]{6})/)[1];
+  };
+  const codigo = await fazerPedido('drip:M:2,flame:G:1');
+  await fazerPedido('the-key:P:1');
+
+  assert.equal((await clienteAdmin(srv.base).pedir('GET', '/pedidos')).status, 401);
+
+  const lista = (await admin.pedir('GET', '/pedidos')).corpo;
+  assert.equal(lista.pedidos.length, 2);
+  assert.deepEqual(lista.filtros.find((f) => f.valor === 'novo'), { valor: 'novo', rotulo: 'Novo', total: 2 });
+  const feito = lista.pedidos.find((p) => p.codigo === codigo);
+  assert.equal(feito.statusRotulo, 'Novo');
+  assert.match(feito.resumo, /^2x Drip \(M\) \+ 1 outra peça$/);
+  assert.equal(feito.rotuloPecas, '3 peças');
+
+  const resumo = (await admin.pedir('GET', '/resumo')).corpo;
+  assert.equal(resumo.numeros.pedidosNovos, 2);
+  assert.ok(resumo.pendencias.some((p) => p.link === '/admin/pedidos?status=novo'));
+
+  assert.equal((await admin.pedir('GET', `/pedidos?busca=${codigo.toLowerCase()}`)).corpo.pedidos.length, 1);
+  assert.equal((await admin.pedir('GET', '/pedidos?busca=%25')).corpo.pedidos.length, 0, '% é texto, não curinga');
+  assert.equal((await admin.pedir('GET', '/pedidos?status=qualquer')).corpo.pedidos.length, 2, 'filtro estranho é ignorado');
+
+  const detalhe = (await admin.pedir('GET', `/pedidos/${feito.id}`)).corpo;
+  assert.equal(detalhe.itens.length, 2);
+  assert.equal(detalhe.itens[0].linkPeca, '/produto/drip');
+  assert.match(detalhe.mensagem, new RegExp(`#${codigo}`));
+  assert.ok(detalhe.opcoesStatus.some((o) => o.valor === 'pago'));
+
+  const atualizado = await admin.pedir('PUT', `/pedidos/${feito.id}`, { status: 'pago', clienteNome: '  Maria  ', observacao: 'Pix recebido' });
+  assert.equal(atualizado.status, 200);
+  assert.equal(atualizado.corpo.statusRotulo, 'Pago');
+  assert.equal(atualizado.corpo.clienteNome, 'Maria');
+  // só o que foi enviado muda
+  const soNota = await admin.pedir('PUT', `/pedidos/${feito.id}`, { observacao: 'Enviar na sexta' });
+  assert.equal(soNota.corpo.statusRotulo, 'Pago');
+  assert.equal(soNota.corpo.clienteNome, 'Maria');
+  assert.equal((await admin.pedir('GET', '/pedidos?status=pago')).corpo.pedidos.length, 1);
+
+  assert.equal((await admin.pedir('PUT', `/pedidos/${feito.id}`, { status: 'roubado' })).status, 400);
+  assert.equal((await admin.pedir('PUT', `/pedidos/${feito.id}`, { total: 1 })).status, 400, 'campo desconhecido é recusado');
+  assert.equal((await admin.pedir('PUT', `/pedidos/${feito.id}`, {})).status, 400);
+  assert.equal((await admin.pedir('PUT', `/pedidos/${feito.id}`, { observacao: 'x'.repeat(1001) })).status, 400);
+  assert.equal((await admin.pedir('PUT', '/pedidos/999999', { status: 'pago' })).status, 404);
+  const semCabecalho = await fetch(`${srv.base}/api/admin/pedidos/${feito.id}`, {
+    method: 'PUT', headers: { 'content-type': 'application/json', origin: ORIGEM, cookie: admin.cookie }, body: JSON.stringify({ status: 'cancelado' })
+  });
+  assert.equal(semCabecalho.status, 403);
+
+  const atividade = (await admin.pedir('GET', '/auditoria')).corpo;
+  assert.ok(atividade.some((a) => a.descricao === `atualizou o pedido #${codigo} (Pago)`));
+  assert.ok(atividade.some((a) => a.descricao === `atualizou o pedido #${codigo}`));
 });
 
 test('a atividade registra as ações do painel', async () => {

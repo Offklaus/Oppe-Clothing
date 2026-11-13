@@ -9,6 +9,7 @@ import { COOKIE_SESSAO, criarSessao, encerrarSessao, opcoesCookie } from '../seg
 import * as auth from '../servicos/autenticacao.js';
 import * as catalogo from '../servicos/catalogo.js';
 import * as imagens from '../servicos/imagens.js';
+import * as pedidos from '../servicos/pedido.js';
 import * as repoAuditoria from '../repos/auditoria.js';
 
 const enviarImagem = multer({
@@ -33,7 +34,8 @@ const DESCRICOES = {
   usuario_criado: (d) => `cadastrou o admin ${d.email}`,
   usuario_editado: (d) => `alterou o admin ${d.email}`,
   senha_redefinida: (d) => `redefiniu a senha de ${d.email}`,
-  senha_trocada: () => 'trocou a própria senha'
+  senha_trocada: () => 'trocou a própria senha',
+  pedido_editado: (d) => `atualizou o pedido #${d.codigo}${d.status ? ` (${d.status})` : ''}`
 };
 
 export function rotasAdmin({ pool, config, limiteLogin = 10 }) {
@@ -149,6 +151,20 @@ export function rotasAdmin({ pool, config, limiteLogin = 10 }) {
     const c = await catalogo.removerColecao(pool, id);
     await registrar(req, 'colecao_removida', 'colecao', id, { nome: c.nome });
     res.status(204).end();
+  });
+
+  // ---------- pedidos ----------
+  r.get('/pedidos', async (req, res) => {
+    res.json(await pedidos.listarPedidosAdmin(pool, validar(esquemas.esquemaFiltroPedidos, req.query)));
+  });
+
+  r.get('/pedidos/:id', async (req, res) => res.json(await pedidos.pedidoAdmin(pool, idNumerico(req))));
+
+  r.put('/pedidos/:id', async (req, res) => {
+    const dados = validar(esquemas.esquemaPedido, req.body);
+    const p = await pedidos.atualizarPedido(pool, idNumerico(req), dados);
+    await registrar(req, 'pedido_editado', 'pedido', p.id, { codigo: p.codigo, status: dados.status ? p.statusRotulo : null });
+    res.json(p);
   });
 
   // ---------- loja ----------

@@ -28,8 +28,22 @@ export const buscarProduto = (slug, sinal) => pedirJson(`/api/produtos/${encodeU
 /** O servidor confere a sacola e devolve os itens válidos, os valores e o link do pedido. */
 export const calcularSacola = (itens, sinal) => pedirJson('/api/pedidos/previa', { corpo: { itens }, sinal });
 
-/** Link do pedido de uma peça só (o servidor valida e redireciona para o WhatsApp). */
-export const linkPedidoWhatsapp = (itens) =>
-  `/api/pedidos/whatsapp?itens=${encodeURIComponent(itens.map((i) => `${i.id}:${i.tamanho}:${i.qtd}`).join(','))}`;
+/**
+ * Link do pedido de uma peça só (o servidor valida, registra e redireciona para o WhatsApp).
+ * A chave identifica este pedido: abrir o mesmo link de novo não cria outro.
+ */
+export const linkPedidoWhatsapp = (itens, chave) =>
+  `/api/pedidos/whatsapp?itens=${encodeURIComponent(itens.map((i) => `${i.id}:${i.tamanho}:${i.qtd}`).join(','))}&chave=${chave}`;
+
+/** Identificador aleatório (UUID v4) para a chave do pedido. */
+export function novaChavePedido() {
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  // fora de HTTPS (ex.: testando pelo IP da rede) randomUUID não existe
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  const h = Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
 
 export const LINK_CONTATO_WHATSAPP = '/api/contato/whatsapp';

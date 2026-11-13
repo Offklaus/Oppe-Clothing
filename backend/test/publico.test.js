@@ -1,5 +1,6 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { prepararBanco, subirServidor } from './ajuda.js';
 
 let pool;
@@ -67,13 +68,18 @@ test('prévia da sacola: junta repetidos, tira o que não existe e calcula o tot
   assert.equal(previa.removidos.length, 2);
   assert.equal(previa.pecas, 102);
   assert.match(previa.totalTexto, /R\$\s13\.249,80/);
-  assert.match(previa.linkWhatsapp, /^\/api\/pedidos\/whatsapp\?itens=/);
+  assert.match(previa.linkWhatsapp, /^\/api\/pedidos\/whatsapp\?itens=[^&]+&chave=[0-9a-f-]{36}$/);
   await pool.query("UPDATE produtos SET preco_centavos = NULL WHERE slug = 'drip'");
 });
 
-test('link do pedido redireciona ao WhatsApp da loja com a mensagem montada no servidor', async () => {
-  const res = await fetch(`${srv.base}/api/pedidos/whatsapp?itens=i-won-again:M:2,the-key:G:1`, { redirect: 'manual' });
-  assert.equal(res.status, 302);
+const abrirPedido = (itens, chave = randomUUID(), headers = {}) =>
+  fetch(`${srv.base}/api/pedidos/whatsapp?itens=${encodeURIComponent(itens)}&chave=${chave}`, { redirect: 'manual', headers });
+
+test('link do pedido registra o pedido e redireciona ao WhatsApp com o código na mensagem', async () => {
+  await pool.query("UPDATE produtos SET preco_centavos = 15000 WHERE slug = 'the-key'");
+  const res = await abrirPedido('i-won-again:M:2,the-key:G:1');
+  assert.equal(res.status, 303);
+  assert.equal(res.headers.get('cache-control'), 'no-store');
   const destino = new URL(res.headers.get('location'));
   assert.equal(destino.host, 'wa.me');
   assert.equal(destino.pathname, '/5535997653327');
@@ -81,16 +87,56 @@ test('link do pedido redireciona ao WhatsApp da loja com a mensagem montada no s
   assert.match(texto, /2x I Won Again \(Cru \/ Vinho\) — Tam\. M/);
   assert.match(texto, /https:\/\/oppe\.exemplo\/produto\/the-key/);
 
-  const ruim = await fetch(`${srv.base}/api/pedidos/whatsapp?itens=<script>:M:1`, { redirect: 'manual' });
+  const codigo = texto.match(/Código do pedido: #([2-9A-HJ-NP-Z]{6})/)?.[1];
+  assert.ok(codigo, 'a mensagem leva o código do pedido');
+  const { rows: [salvo] } = await pool.query('SELECT * FROM pedidos WHERE codigo = $1', [codigo]);
+  assert.equal(salvo.status, 'novo');
+  assert.equal(salvo.pecas, 3);
+  assert.equal(salvo.total_centavos, null, 'uma peça sem preço deixa o total "a combinar"');
+  const { rows: itens } = await pool.query('SELECT slug, tamanho, qtd, preco_centavos FROM pedido_itens WHERE pedido_id = $1 ORDER BY posicao', [salvo.id]);
+  assert.deepEqual(itens, [
+    { slug: 'i-won-again', tamanho: 'M', qtd: 2, preco_centavos: null },
+    { slug: 'the-key', tamanho: 'G', qtd: 1, preco_centavos: 15000 }
+  ]);
+  await pool.query("UPDATE produtos SET preco_centavos = NULL WHERE slug = 'the-key'");
+});
+
+test('o mesmo link (clique duplo, "abrir de novo") não cria outro pedido', async () => {
+  const chave = randomUUID();
+  const antes = (await pool.query('SELECT count(*)::int AS n FROM pedidos')).rows[0].n;
+  const respostas = await Promise.all([abrirPedido('drip:P:1', chave), abrirPedido('drip:P:1', chave), abrirPedido('drip:P:1', chave)]);
+  assert.deepEqual(respostas.map((r) => r.status), [303, 303, 303]);
+  assert.equal(new Set(respostas.map((r) => r.headers.get('location'))).size, 1, 'mesma mensagem, mesmo código');
+  const depois = (await pool.query('SELECT count(*)::int AS n FROM pedidos')).rows[0].n;
+  assert.equal(depois, antes + 1);
+});
+
+test('pedido só é registrado quando vem do próprio site, com link válido', async () => {
+  const antes = (await pool.query('SELECT count(*)::int AS n FROM pedidos')).rows[0].n;
+  const deOutroSite = await abrirPedido('drip:M:1', randomUUID(), { 'sec-fetch-site': 'cross-site', 'sec-fetch-dest': 'document' });
+  assert.equal(deOutroSite.status, 403);
+  const comoImagem = await abrirPedido('drip:M:1', randomUUID(), { 'sec-fetch-site': 'same-origin', 'sec-fetch-dest': 'image' });
+  assert.equal(comoImagem.status, 403);
+  const semChave = await fetch(`${srv.base}/api/pedidos/whatsapp?itens=drip:M:1`, { redirect: 'manual' });
+  assert.equal(semChave.status, 400);
+  const chaveRuim = await abrirPedido('drip:M:1', 'nao-e-uuid');
+  assert.equal(chaveRuim.status, 400);
+
+  const ruim = await abrirPedido('<script>:M:1');
   assert.equal(ruim.status, 400);
   assert.doesNotMatch(await ruim.text(), /<script>/);
+
+  const doSite = await abrirPedido('drip:M:1', randomUUID(), { 'sec-fetch-site': 'same-origin', 'sec-fetch-dest': 'document' });
+  assert.equal(doSite.status, 303);
+  const depois = (await pool.query('SELECT count(*)::int AS n FROM pedidos')).rows[0].n;
+  assert.equal(depois, antes + 1, 'só o pedido feito pelo site foi registrado');
 });
 
 test('peça desativada some do site e não pode ser pedida', async () => {
   await pool.query("UPDATE produtos SET ativo = false WHERE slug = 'fall'");
   assert.equal((await fetch(`${srv.base}/api/produtos/fall`)).status, 404);
   assert.equal((await json('/api/produtos')).produtos.length, 12);
-  const pedido = await fetch(`${srv.base}/api/pedidos/whatsapp?itens=fall:M:1`, { redirect: 'manual' });
+  const pedido = await abrirPedido('fall:M:1');
   assert.equal(pedido.status, 400);
   await pool.query("UPDATE produtos SET ativo = true WHERE slug = 'fall'");
 });

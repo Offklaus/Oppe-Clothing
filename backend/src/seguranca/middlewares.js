@@ -43,12 +43,28 @@ export function protegerCsrf(origensPermitidas) {
   };
 }
 
-export function limitador({ janelaMs, limite, mensagem }) {
+/** Limite de requisições por IP. `pagina` (opcional) responde em HTML, para rotas abertas no navegador. */
+export function limitador({ janelaMs, limite, mensagem, pagina }) {
   return rateLimit({
     windowMs: janelaMs,
     limit: limite,
     standardHeaders: 'draft-8',
     legacyHeaders: false,
-    handler: (req, res) => res.status(429).json({ erro: mensagem })
+    handler: (req, res) => (pagina
+      ? res.status(429).type('html').send(pagina(mensagem))
+      : res.status(429).json({ erro: mensagem }))
   });
+}
+
+/**
+ * Pedido só é registrado quando o cliente abre o link a partir do próprio site.
+ * Um site de terceiros não consegue criar pedido falso embutindo o link (imagem, script, iframe)
+ * nem levando o visitante até ele. Navegadores antigos não mandam estes cabeçalhos: aí vale o limite por IP.
+ */
+export function navegacaoDoSite(req) {
+  const site = req.get('sec-fetch-site');
+  const destino = req.get('sec-fetch-dest');
+  if (site && !['same-origin', 'same-site', 'none'].includes(site)) return false;
+  if (destino && destino !== 'document') return false;
+  return true;
 }

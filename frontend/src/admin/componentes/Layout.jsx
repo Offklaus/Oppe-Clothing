@@ -4,6 +4,7 @@ import logoCru from '../../assets/logo-cru.png';
 
 const LINKS = [
   ['/admin', 'Início', true],
+  ['/admin/pedidos', 'Pedidos'],
   ['/admin/produtos', 'Peças'],
   ['/admin/colecoes', 'Coleções'],
   ['/admin/loja', 'Loja'],
