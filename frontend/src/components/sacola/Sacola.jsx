@@ -16,8 +16,12 @@ export default function Sacola() {
   const { itens, aberta, fechar, alterarQtd, remover, esvaziar, substituir } = useSacola();
   const [previa, setPrevia] = useState(null);
   const [falhou, setFalhou] = useState(false);
+  // link do último pedido enviado: a sacola esvazia, mas o cliente ainda pode reabrir o WhatsApp
+  const [enviado, setEnviado] = useState(null);
   const refFechar = useRef(null);
   const chave = JSON.stringify(itens);
+
+  useEffect(() => { if (!aberta) setEnviado(null); }, [aberta]);
 
   useEffect(() => {
     if (!aberta) return undefined;
@@ -38,6 +42,16 @@ export default function Sacola() {
   const tirar = (indice) => { remover(indice); refFechar.current?.focus(); };
   const vazia = itens.length === 0;
 
+  /** O link abre o WhatsApp numa nova aba; logo depois a sacola esvazia. */
+  const enviarPedido = () => {
+    const link = previa.linkWhatsapp;
+    setTimeout(() => {
+      setEnviado(link);
+      esvaziar();
+      refFechar.current?.focus();
+    }, 0);
+  };
+
   return (
     <Modal aberto={aberta} onFechar={fechar} className="bag" rotuloId="bag-titulo">
       <div className="bag__inner">
@@ -49,7 +63,17 @@ export default function Sacola() {
         </div>
 
         <div className="bag__body">
-          {vazia && (
+          {vazia && enviado && (
+            <div className="bag__empty" role="status">
+              <p className="bag__sent">Pedido enviado!</p>
+              <p>Agora é só continuar a conversa com a gente no WhatsApp para combinar frete e pagamento.</p>
+              <a className="btn btn--lg btn--block" href={enviado} target="_blank" rel="noopener">
+                Abrir o WhatsApp de novo
+              </a>
+              <Link className="btn btn--dark btn--lg btn--block" to="/#catalogo" onClick={fechar}>Continuar no catálogo</Link>
+            </div>
+          )}
+          {vazia && !enviado && (
             <div className="bag__empty">
               <p>Sua sacola está vazia. Escolha uma peça no catálogo, ou fale direto com a gente no WhatsApp.</p>
               <Link className="btn btn--dark btn--lg btn--block" to="/#catalogo" onClick={fechar}>Ver catálogo</Link>
@@ -84,7 +108,7 @@ export default function Sacola() {
               <span className="bag__total-value">{previa.totalTexto}</span>
             </div>
             <p className="bag__note">O pedido abre no WhatsApp com as peças e os tamanhos. Frete e pagamento você combina direto com a loja.</p>
-            <a className="btn btn--dark btn--xl btn--block" href={previa.linkWhatsapp} target="_blank" rel="noopener">
+            <a className="btn btn--dark btn--xl btn--block" href={previa.linkWhatsapp} target="_blank" rel="noopener" onClick={enviarPedido}>
               <Estrela tamanho={16} cor="#E01E14" />
               Enviar pedido no WhatsApp
             </a>
