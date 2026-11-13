@@ -35,7 +35,10 @@ const DESCRICOES = {
   usuario_editado: (d) => `alterou o admin ${d.email}`,
   senha_redefinida: (d) => `redefiniu a senha de ${d.email}`,
   senha_trocada: () => 'trocou a própria senha',
-  pedido_editado: (d) => `atualizou o pedido #${d.codigo}${d.status ? ` (${d.status})` : ''}`
+  pedido_editado: (d) => {
+    const partes = [d.status, d.entrega && 'dados de entrega'].filter(Boolean);
+    return `atualizou o pedido #${d.codigo}${partes.length ? ` (${partes.join(', ')})` : ''}`;
+  }
 };
 
 export function rotasAdmin({ pool, config, limiteLogin = 10 }) {
@@ -162,8 +165,10 @@ export function rotasAdmin({ pool, config, limiteLogin = 10 }) {
 
   r.put('/pedidos/:id', async (req, res) => {
     const dados = validar(esquemas.esquemaPedido, req.body);
-    const p = await pedidos.atualizarPedido(pool, idNumerico(req), dados);
-    await registrar(req, 'pedido_editado', 'pedido', p.id, { codigo: p.codigo, status: dados.status ? p.statusRotulo : null });
+    const { pedido: p, mudouStatus } = await pedidos.atualizarPedido(pool, idNumerico(req), dados);
+    await registrar(req, 'pedido_editado', 'pedido', p.id, {
+      codigo: p.codigo, status: mudouStatus ? p.statusRotulo : null, entrega: Boolean(dados.cliente)
+    });
     res.json(p);
   });
 

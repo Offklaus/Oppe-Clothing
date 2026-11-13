@@ -1,7 +1,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { prepararBanco, subirServidor } from './ajuda.js';
+import { CLIENTE_TESTE, consultarPedido, fazerPedido, ORIGEM, prepararBanco, subirServidor } from './ajuda.js';
 
 let pool;
 let srv;
@@ -19,6 +19,8 @@ after(async () => {
 test('dados da loja: só o que o site precisa, sem campos internos', async () => {
   const loja = await json('/api/loja');
   assert.equal(loja.whatsappExibicao, '(35) 99765-3327');
+  assert.equal(loja.ufs.length, 27, 'o formulário de entrega recebe os estados do servidor');
+  assert.ok(loja.ufs.includes('MG'));
   assert.deepEqual(loja.instagram, { usuario: '@oppeclothing', url: 'https://www.instagram.com/oppeclothing/' });
   assert.equal(loja.mensagens, undefined);
   assert.equal(loja.whatsapp_numero, undefined);
@@ -50,8 +52,14 @@ test('detalhe da peça traz ficha, tamanhos e relacionados da mesma coleção pr
   assert.equal((await fetch(`${srv.base}/api/produtos/nao-existe`)).status, 404);
 });
 
-test('prévia da sacola: junta repetidos, tira o que não existe e calcula o total', async () => {
-  await pool.query("UPDATE produtos SET preco_centavos = 12990 WHERE slug = 'drip'");
+/** Muda o preço de uma peça só durante o teste (volta ao original mesmo se o teste falhar). */
+async function precoDuranteOTeste(t, slug, centavos) {
+  await pool.query('UPDATE produtos SET preco_centavos = $2 WHERE slug = $1', [slug, centavos]);
+  t.after(() => pool.query('UPDATE produtos SET preco_centavos = NULL WHERE slug = $1', [slug]));
+}
+
+test('prévia da sacola: junta repetidos, tira o que não existe e calcula o total', async (t) => {
+  await precoDuranteOTeste(t, 'drip', 12990);
   const res = await fetch(`${srv.base}/api/pedidos/previa`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -68,77 +76,135 @@ test('prévia da sacola: junta repetidos, tira o que não existe e calcula o tot
   assert.equal(previa.removidos.length, 2);
   assert.equal(previa.pecas, 102);
   assert.match(previa.totalTexto, /R\$\s13\.249,80/);
-  assert.match(previa.linkWhatsapp, /^\/api\/pedidos\/whatsapp\?itens=[^&]+&chave=[0-9a-f-]{36}$/);
-  await pool.query("UPDATE produtos SET preco_centavos = NULL WHERE slug = 'drip'");
+  assert.equal(previa.podeFinalizar, true);
+  assert.equal(previa.linkWhatsapp, undefined, 'o pedido não sai mais por link');
 });
 
-const abrirPedido = (itens, chave = randomUUID(), headers = {}) =>
-  fetch(`${srv.base}/api/pedidos/whatsapp?itens=${encodeURIComponent(itens)}&chave=${chave}`, { redirect: 'manual', headers });
+const contarPedidos = async () => (await pool.query('SELECT count(*)::int AS n FROM pedidos')).rows[0].n;
 
-test('link do pedido registra o pedido e redireciona ao WhatsApp com o código na mensagem', async () => {
-  await pool.query("UPDATE produtos SET preco_centavos = 15000 WHERE slug = 'the-key'");
-  const res = await abrirPedido('i-won-again:M:2,the-key:G:1');
-  assert.equal(res.status, 303);
+test('finalizar pedido: registra com os dados do cliente e devolve o código e o WhatsApp', async (t) => {
+  await precoDuranteOTeste(t, 'the-key', 15000);
+  const res = await fazerPedido(srv.base, [{ id: 'i-won-again', tamanho: 'M', qtd: 2 }, { id: 'the-key', tamanho: 'G', qtd: 1 }]);
+  assert.equal(res.status, 201);
   assert.equal(res.headers.get('cache-control'), 'no-store');
-  const destino = new URL(res.headers.get('location'));
+  const criado = await res.json();
+  assert.match(criado.codigo, /^[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}$/);
+  const codigo = criado.codigo.replace('-', '');
+  assert.equal(criado.acompanharUrl, `/acompanhar?codigo=${codigo}`);
+
+  const destino = new URL(criado.whatsappUrl);
   assert.equal(destino.host, 'wa.me');
   assert.equal(destino.pathname, '/5535997653327');
   const texto = destino.searchParams.get('text');
   assert.match(texto, /2x I Won Again \(Cru \/ Vinho\) — Tam\. M/);
-  assert.match(texto, /https:\/\/oppe\.exemplo\/produto\/the-key/);
+  assert.match(texto, new RegExp(`Pedido: #${criado.codigo}`));
+  assert.match(texto, /Nome: Maria Teste/);
+  assert.match(texto, /Entrega: Itajubá\/MG — CEP 37500-000/);
+  assert.match(texto, new RegExp(`Acompanhe: https://oppe\\.exemplo/acompanhar\\?codigo=${codigo}`));
+  assert.doesNotMatch(texto, /maria@exemplo\.com|Rua das Flores/, 'e-mail e endereço completo ficam só no painel');
 
-  const codigo = texto.match(/Código do pedido: #([2-9A-HJ-NP-Z]{6})/)?.[1];
-  assert.ok(codigo, 'a mensagem leva o código do pedido');
   const { rows: [salvo] } = await pool.query('SELECT * FROM pedidos WHERE codigo = $1', [codigo]);
   assert.equal(salvo.status, 'novo');
   assert.equal(salvo.pecas, 3);
   assert.equal(salvo.total_centavos, null, 'uma peça sem preço deixa o total "a combinar"');
+  assert.equal(salvo.cliente_telefone, '5535999990000');
+  assert.equal(salvo.entrega_cep, '37500000');
+  assert.equal(salvo.entrega_uf, 'MG');
   const { rows: itens } = await pool.query('SELECT slug, tamanho, qtd, preco_centavos FROM pedido_itens WHERE pedido_id = $1 ORDER BY posicao', [salvo.id]);
   assert.deepEqual(itens, [
     { slug: 'i-won-again', tamanho: 'M', qtd: 2, preco_centavos: null },
     { slug: 'the-key', tamanho: 'G', qtd: 1, preco_centavos: 15000 }
   ]);
-  await pool.query("UPDATE produtos SET preco_centavos = NULL WHERE slug = 'the-key'");
+  const { rows: eventos } = await pool.query('SELECT status FROM pedido_eventos WHERE pedido_id = $1', [salvo.id]);
+  assert.deepEqual(eventos, [{ status: 'novo' }]);
 });
 
-test('o mesmo link (clique duplo, "abrir de novo") não cria outro pedido', async () => {
+test('clique duplo em "confirmar" não cria dois pedidos', async () => {
   const chave = randomUUID();
-  const antes = (await pool.query('SELECT count(*)::int AS n FROM pedidos')).rows[0].n;
-  const respostas = await Promise.all([abrirPedido('drip:P:1', chave), abrirPedido('drip:P:1', chave), abrirPedido('drip:P:1', chave)]);
-  assert.deepEqual(respostas.map((r) => r.status), [303, 303, 303]);
-  assert.equal(new Set(respostas.map((r) => r.headers.get('location'))).size, 1, 'mesma mensagem, mesmo código');
-  const depois = (await pool.query('SELECT count(*)::int AS n FROM pedidos')).rows[0].n;
-  assert.equal(depois, antes + 1);
+  const antes = await contarPedidos();
+  const respostas = await Promise.all([1, 2, 3].map(() => fazerPedido(srv.base, [{ id: 'drip', tamanho: 'P', qtd: 1 }], { chave })));
+  const corpos = await Promise.all(respostas.map((r) => r.json()));
+  assert.equal(new Set(corpos.map((c) => c.codigo)).size, 1, 'mesmo código');
+  assert.deepEqual(respostas.map((r) => r.status).sort(), [200, 200, 201]);
+  assert.equal(await contarPedidos(), antes + 1);
 });
 
-test('pedido só é registrado quando vem do próprio site, com link válido', async () => {
-  const antes = (await pool.query('SELECT count(*)::int AS n FROM pedidos')).rows[0].n;
-  const deOutroSite = await abrirPedido('drip:M:1', randomUUID(), { 'sec-fetch-site': 'cross-site', 'sec-fetch-dest': 'document' });
-  assert.equal(deOutroSite.status, 403);
-  const comoImagem = await abrirPedido('drip:M:1', randomUUID(), { 'sec-fetch-site': 'same-origin', 'sec-fetch-dest': 'image' });
-  assert.equal(comoImagem.status, 403);
-  const semChave = await fetch(`${srv.base}/api/pedidos/whatsapp?itens=drip:M:1`, { redirect: 'manual' });
-  assert.equal(semChave.status, 400);
-  const chaveRuim = await abrirPedido('drip:M:1', 'nao-e-uuid');
-  assert.equal(chaveRuim.status, 400);
+test('repetir a chave com outros dados não devolve o pedido (nem a mensagem) de outra pessoa', async () => {
+  const chave = randomUUID();
+  const original = await fazerPedido(srv.base, [{ id: 'drip', tamanho: 'G', qtd: 1 }], { chave });
+  assert.equal(original.status, 201);
 
-  const ruim = await abrirPedido('<script>:M:1');
+  for (const outro of [{ email: 'outra@exemplo.com' }, { telefone: '(11) 98888-7777' }]) {
+    const res = await fazerPedido(srv.base, [{ id: 'flame', tamanho: 'M', qtd: 1 }], { chave, cliente: { ...CLIENTE_TESTE, ...outro } });
+    assert.equal(res.status, 409);
+    const corpo = await res.json();
+    assert.equal(corpo.whatsappUrl, undefined);
+    assert.ok(!JSON.stringify(corpo).includes('Maria'));
+  }
+  // o mesmo cliente repetindo (ex.: nova tentativa após falha de rede) recebe o mesmo pedido
+  const repetido = await fazerPedido(srv.base, [{ id: 'drip', tamanho: 'G', qtd: 1 }], { chave });
+  assert.equal(repetido.status, 200);
+  assert.equal((await repetido.json()).codigo, (await original.json()).codigo);
+});
+
+test('pedido só é aceito vindo do site, com dados válidos', async () => {
+  const antes = await contarPedidos();
+  const itens = [{ id: 'drip', tamanho: 'M', qtd: 1 }];
+  assert.equal((await fazerPedido(srv.base, itens, { origem: null })).status, 403, 'sem Origin');
+  assert.equal((await fazerPedido(srv.base, itens, { origem: 'https://site-malicioso.exemplo' })).status, 403);
+
+  const ruim = await fazerPedido(srv.base, itens, {
+    cliente: { ...CLIENTE_TESTE, email: 'sem-arroba', telefone: '123', cep: '1', uf: 'ZZ', nome: '<script>' }
+  });
   assert.equal(ruim.status, 400);
-  assert.doesNotMatch(await ruim.text(), /<script>/);
+  const { campos } = await ruim.json();
+  assert.deepEqual(Object.keys(campos).sort(), ['cliente.cep', 'cliente.email', 'cliente.nome', 'cliente.telefone', 'cliente.uf']);
 
-  const doSite = await abrirPedido('drip:M:1', randomUUID(), { 'sec-fetch-site': 'same-origin', 'sec-fetch-dest': 'document' });
-  assert.equal(doSite.status, 303);
-  const depois = (await pool.query('SELECT count(*)::int AS n FROM pedidos')).rows[0].n;
-  assert.equal(depois, antes + 1, 'só o pedido feito pelo site foi registrado');
+  const semChave = await fetch(`${srv.base}/api/pedidos`, {
+    method: 'POST', headers: { 'content-type': 'application/json', origin: ORIGEM }, body: JSON.stringify({ itens, cliente: CLIENTE_TESTE })
+  });
+  assert.equal(semChave.status, 400);
+  assert.equal((await fazerPedido(srv.base, [])).status, 400, 'sacola vazia');
+  assert.equal((await fazerPedido(srv.base, [{ id: '<script>', tamanho: 'M', qtd: 1 }])).status, 400);
+  assert.equal((await fetch(`${srv.base}/api/pedidos/whatsapp?itens=drip:M:1`)).status, 404, 'o link antigo não existe mais');
+  assert.equal(await contarPedidos(), antes, 'nada foi registrado');
 });
 
-test('peça desativada some do site e não pode ser pedida', async () => {
+test('acompanhar pedido: mostra o andamento pelo código, sem dados pessoais', async () => {
+  const { codigo } = await (await fazerPedido(srv.base, [{ id: 'flame', tamanho: 'G', qtd: 1 }])).json();
+
+  const res = await consultarPedido(srv.base, ` #${codigo.toLowerCase()} `);
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get('cache-control'), 'no-store');
+  const pedido = await res.json();
+  assert.equal(pedido.codigo, codigo);
+  assert.equal(pedido.statusRotulo, 'Aguardando pagamento');
+  assert.deepEqual(pedido.etapas.map((e) => [e.rotulo, e.estado]), [
+    ['Pagamento', 'atual'], ['Preparação', 'pendente'], ['Envio', 'pendente'], ['Entrega', 'pendente']
+  ]);
+  assert.equal(pedido.etapas[0].texto, 'Aguardando pagamento');
+  assert.ok(pedido.etapas[0].data);
+  assert.deepEqual(pedido.itens.map((i) => [i.nome, i.tamanho, i.qtd]), [['Flame', 'G', 1]]);
+  const tudo = JSON.stringify(pedido);
+  for (const pessoal of ['Maria', 'maria@exemplo.com', '99999', 'Rua das Flores', '37500', 'Centro', 'Apto']) {
+    assert.ok(!tudo.includes(pessoal), `não pode mostrar "${pessoal}"`);
+  }
+
+  const inexistente = await consultarPedido(srv.base, 'ZZZZ-ZZZZ');
+  const invalido = await consultarPedido(srv.base, 'abc');
+  assert.equal(inexistente.status, 404);
+  assert.equal(invalido.status, 404);
+  assert.equal((await inexistente.json()).erro, (await invalido.json()).erro, 'mesma resposta: não dá pistas');
+  assert.equal((await consultarPedido(srv.base, '')).status, 400);
+});
+
+test('peça desativada some do site e não pode ser pedida', async (t) => {
   await pool.query("UPDATE produtos SET ativo = false WHERE slug = 'fall'");
+  t.after(() => pool.query("UPDATE produtos SET ativo = true WHERE slug = 'fall'"));
   assert.equal((await fetch(`${srv.base}/api/produtos/fall`)).status, 404);
   assert.equal((await json('/api/produtos')).produtos.length, 12);
-  const pedido = await abrirPedido('fall:M:1');
+  const pedido = await fazerPedido(srv.base, [{ id: 'fall', tamanho: 'M', qtd: 1 }]);
   assert.equal(pedido.status, 400);
-  await pool.query("UPDATE produtos SET ativo = true WHERE slug = 'fall'");
 });
 
 test('cabeçalhos de segurança e fotos', async () => {

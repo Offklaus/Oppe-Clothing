@@ -24,7 +24,6 @@
   border: 1.5px solid var(--preto); background: transparent; cursor: pointer;
   align-items: center; justify-content: center;
 }
-.cta-curta { display: none; }
 .bag-count {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 22px; height: 22px; padding: 0 5px;
@@ -38,8 +37,6 @@
   .header__logo img { height: 42px; }
   .header__burger { display: inline-flex; }
   .header__cta { padding: 0 14px; font-size: 12px; letter-spacing: 0.08em; }
-  .cta-longa { display: none; }
-  .cta-curta { display: inline; }
   .header__nav {
     display: none; order: 3; width: 100%; flex-direction: column; gap: 0;
     margin-top: 12px; border-top: 1px solid var(--concreto); padding-top: 4px;

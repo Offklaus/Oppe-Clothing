@@ -33,8 +33,8 @@ export default function Pedidos() {
     <>
       <Cabecalho sobre="VENDAS" titulo="Pedidos" />
       <p className="adm-texto adm-intro">
-        Cada pedido entra aqui quando o cliente toca em enviar no site e o WhatsApp abre. Ache a conversa
-        pelo código (ex.: #K7Q2MX) e atualize a situação conforme o atendimento.
+        Cada pedido entra aqui quando o cliente confirma os dados no site, antes de abrir o WhatsApp. Ache a conversa
+        pelo código (ex.: #K7Q2-MX9P) e atualize a situação: o cliente acompanha cada mudança pelo código.
       </p>
       <Alerta>{erro?.message}</Alerta>
 
@@ -53,12 +53,12 @@ export default function Pedidos() {
           ))}
         </div>
         <form className="adm-busca" role="search" onSubmit={buscar}>
-          <label className="visually-hidden" htmlFor="busca-pedido">Buscar por código ou cliente</label>
+          <label className="visually-hidden" htmlFor="busca-pedido">Buscar por código, nome, e-mail ou telefone</label>
           <input
             id="busca-pedido"
             type="search"
             className="adm-mini"
-            placeholder="Código ou cliente"
+            placeholder="Código, nome, e-mail ou telefone"
             maxLength={40}
             value={texto}
             onChange={(e) => setTexto(e.target.value)}

@@ -41,11 +41,29 @@ export function gerarSlug(texto) {
   return slug || 'item';
 }
 
-/** "(35) 99765-3327", "35997653327" ou "+55 35 99765-3327" → "5535997653327". */
-export function normalizarWhatsapp(valor) {
+/**
+ * Só os números do telefone; com 10 ou 11 dígitos (DDD + número) ganha o 55 do Brasil.
+ * "(35) 99765-3327", "35997653327" e "+55 35 99765-3327" → "5535997653327".
+ */
+export function telefoneComPais(valor) {
   const digitos = String(valor ?? '').replace(/\D/g, '');
-  if (!digitos) return '';
-  const numero = digitos.length === 10 || digitos.length === 11 ? `55${digitos}` : digitos;
+  return digitos.length === 10 || digitos.length === 11 ? `55${digitos}` : digitos;
+}
+
+/** Celular ou fixo brasileiro já com o 55: DDD (sem zero) + 8 dígitos, com ou sem o 9 na frente. */
+export const TELEFONE_BR = /^55[1-9]{2}9?[0-9]{8}$/;
+
+/** Estados aceitos no endereço de entrega (o site recebe esta lista da API). */
+export const UFS = Object.freeze(['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA',
+  'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO']);
+
+/** "37500000" → "37500-000". */
+export const formatarCep = (cep) => (cep?.length === 8 ? `${cep.slice(0, 5)}-${cep.slice(5)}` : cep ?? '');
+
+/** WhatsApp da loja: aceita também números de fora do Brasil (12 a 15 dígitos). */
+export function normalizarWhatsapp(valor) {
+  const numero = telefoneComPais(valor);
+  if (!numero) return '';
   if (!/^\d{12,15}$/.test(numero)) {
     throw new ErroHttp(400, 'Confira os campos destacados.', { whatsapp: 'WhatsApp inválido. Use DDD + número, ex.: (35) 99765-3327.' });
   }

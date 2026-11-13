@@ -21,6 +21,21 @@ function lerTrustProxy(valor) {
   return Number.isInteger(numero) && numero >= 0 ? numero : texto; // número de proxies ou ex.: "loopback"
 }
 
+/**
+ * Cabeçalho com o IP real do visitante, escrito pelo proxy da hospedagem (o visitante não consegue forjar).
+ * No Render, a Cloudflare grava CF-Connecting-IP em toda requisição e sobrescreve o que o cliente mandar;
+ * por isso ele é o padrão quando RENDER=true (variável que o próprio Render define).
+ * Sem isso, todos os visitantes apareceriam com o IP interno do proxy e dividiriam os mesmos limites.
+ * CLIENT_IP_HEADER=nenhum desliga; vazio fora do Render = usa o IP da conexão (ou TRUST_PROXY).
+ */
+function lerCabecalhoIp(env) {
+  const texto = String(env.CLIENT_IP_HEADER ?? '').trim().toLowerCase();
+  if (texto === 'nenhum' || texto === 'false') return '';
+  if (!texto) return env.RENDER === 'true' ? 'cf-connecting-ip' : '';
+  if (!/^[a-z0-9-]{1,64}$/.test(texto)) throw new Error('CLIENT_IP_HEADER inválido (use o nome do cabeçalho, ex.: cf-connecting-ip).');
+  return texto;
+}
+
 function lerUrlSupabase(valor) {
   const url = semBarraFinal(String(valor ?? ''));
   if (url && !/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(url)) {
@@ -71,6 +86,7 @@ export function montarConfig(env = process.env) {
     // mesmo que alguém esqueça de definir NODE_ENV
     cookieSeguro: producao || siteUrl.startsWith('https://'),
     trustProxy: lerTrustProxy(env.TRUST_PROXY),
+    cabecalhoIp: lerCabecalhoIp(env),
     // certificado do Supabase para conferir o SSL do banco (aceita "\n" escrito em uma linha só)
     databaseCaCert: String(env.DATABASE_CA_CERT ?? '').replace(/\\n/g, '\n').trim(),
     // fotos do painel no Supabase Storage (sem estas duas, ficam no disco local)

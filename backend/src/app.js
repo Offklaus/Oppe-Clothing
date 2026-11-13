@@ -3,6 +3,7 @@ import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import multer from 'multer';
 import { existsSync } from 'node:fs';
+import { isIP } from 'node:net';
 import path from 'node:path';
 import { ErroHttp } from './erros.js';
 import { limitador } from './seguranca/middlewares.js';
@@ -39,6 +40,15 @@ export function criarApp(ctx) {
     },
     strictTransportSecurity: config.producao ? undefined : false
   }));
+  // IP real do visitante vindo do cabeçalho do proxy (ex.: CF-Connecting-IP no Render).
+  // Vale para os limites de tentativas e para o registro de atividade.
+  if (config.cabecalhoIp) {
+    app.use((req, res, next) => {
+      const ip = String(req.get(config.cabecalhoIp) ?? '').trim();
+      if (isIP(ip)) Object.defineProperty(req, 'ip', { value: ip, configurable: true, enumerable: true });
+      next();
+    });
+  }
   app.use(cookieParser());
   app.use(express.json({ limit: '50kb' }));
   app.use('/images', express.static(config.pastaImagens, { maxAge: '7d', dotfiles: 'deny', index: false }));

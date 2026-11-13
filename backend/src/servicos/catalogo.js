@@ -6,7 +6,7 @@ import * as repoPedidos from '../repos/pedidos.js';
 import { ErroHttp, naoEncontrado } from '../erros.js';
 import { urlDaImagem } from './armazenamento.js';
 import {
-  LIMITE_QTD, centavosParaCampo, formatarWhatsapp, gerarSlug, normalizarInstagram, normalizarWhatsapp,
+  LIMITE_QTD, UFS, centavosParaCampo, formatarWhatsapp, gerarSlug, normalizarInstagram, normalizarWhatsapp,
   paraCentavos, plural, precoTexto, temMarcador
 } from './formatos.js';
 
@@ -79,7 +79,9 @@ export async function lojaPublica(db) {
     filtros: [{ slug: '', nome: 'Todas' }, ...colecoes.map((c) => ({ slug: c.slug, nome: c.nome }))],
     destaqueId: destaque?.slug ?? null,
     colecaoDestaque,
-    qtdMaxima: LIMITE_QTD
+    qtdMaxima: LIMITE_QTD,
+    // estados aceitos no endereço de entrega (a validação é a do servidor; o site só monta a lista)
+    ufs: UFS
   };
 }
 
@@ -351,7 +353,7 @@ export async function resumoAdmin(db, { siteUrl, producao }) {
   const avisar = (texto, link) => pendencias.push({ texto, link });
   const pedidosNovos = pedidosPorStatus.novo ?? 0;
 
-  if (pedidosNovos) avisar(`${plural(pedidosNovos, 'pedido novo esperando', 'pedidos novos esperando')} atendimento.`, '/admin/pedidos?status=novo');
+  if (pedidosNovos) avisar(`${plural(pedidosNovos, 'pedido aguardando', 'pedidos aguardando')} pagamento.`, '/admin/pedidos?status=novo');
 
   if (!loja.whatsapp_numero) avisar('Cadastre o WhatsApp que recebe os pedidos.', '/admin/loja');
   const semPreco = produtos.filter((p) => precoDoProduto(p, loja) == null).length;

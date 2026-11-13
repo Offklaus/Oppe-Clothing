@@ -2,13 +2,12 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import sharp from 'sharp';
 import { existsSync } from 'node:fs';
-import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { config, montarConfig } from '../src/config.js';
 import { opcoesCookie } from '../src/seguranca/sessao.js';
 import { criarUsuario } from '../src/servicos/autenticacao.js';
-import { clienteAdmin, ORIGEM, prepararBanco, SENHA_TESTE, subirServidor } from './ajuda.js';
+import { clienteAdmin, consultarPedido, fazerPedido, ORIGEM, prepararBanco, SENHA_TESTE, subirServidor } from './ajuda.js';
 
 const EMAIL = 'admin@teste.local';
 let pool;
@@ -221,6 +220,12 @@ test('configuração: sem TRUST_PROXY não confia em X-Forwarded-For; cookie Sec
   assert.equal(montarConfig({ SITE_URL: 'http://localhost:5173' }).cookieSeguro, false);
   assert.equal(montarConfig({ TRUST_PROXY: '1' }).trustProxy, 1);
   assert.equal(montarConfig({ TRUST_PROXY: 'loopback' }).trustProxy, 'loopback');
+  // IP do visitante: no Render vem do CF-Connecting-IP (gravado pela Cloudflare); fora dele, da conexão
+  assert.equal(montarConfig({ RENDER: 'true' }).cabecalhoIp, 'cf-connecting-ip');
+  assert.equal(montarConfig({}).cabecalhoIp, '');
+  assert.equal(montarConfig({ RENDER: 'true', CLIENT_IP_HEADER: 'nenhum' }).cabecalhoIp, '');
+  assert.equal(montarConfig({ CLIENT_IP_HEADER: 'True-Client-IP' }).cabecalhoIp, 'true-client-ip');
+  assert.throws(() => montarConfig({ CLIENT_IP_HEADER: 'x y' }), /CLIENT_IP_HEADER/);
   assert.equal(opcoesCookie(true).secure, true);
 });
 
@@ -280,21 +285,19 @@ test('id fora do intervalo do banco responde 400, não erro interno', async () =
   assert.equal((await admin.pedir('GET', '/produtos/1.5')).status, 400);
 });
 
-test('pedidos: o painel lista, filtra, mostra e atualiza; o cliente nunca vê', async () => {
-  const fazerPedido = async (itens) => {
-    const res = await fetch(`${srv.base}/api/pedidos/whatsapp?itens=${encodeURIComponent(itens)}&chave=${randomUUID()}`, { redirect: 'manual' });
-    return new URL(res.headers.get('location')).searchParams.get('text').match(/#([2-9A-HJ-NP-Z]{6})/)[1];
-  };
-  const codigo = await fazerPedido('drip:M:2,flame:G:1');
-  await fazerPedido('the-key:P:1');
+test('pedidos: o painel lista, filtra, mostra os dados do cliente e atualiza o andamento', async () => {
+  const pedir = async (itens) => (await (await fazerPedido(srv.base, itens)).json()).codigo;
+  const codigo = await pedir([{ id: 'drip', tamanho: 'M', qtd: 2 }, { id: 'flame', tamanho: 'G', qtd: 1 }]);
+  await pedir([{ id: 'the-key', tamanho: 'P', qtd: 1 }]);
 
   assert.equal((await clienteAdmin(srv.base).pedir('GET', '/pedidos')).status, 401);
 
   const lista = (await admin.pedir('GET', '/pedidos')).corpo;
   assert.equal(lista.pedidos.length, 2);
-  assert.deepEqual(lista.filtros.find((f) => f.valor === 'novo'), { valor: 'novo', rotulo: 'Novo', total: 2 });
+  assert.deepEqual(lista.filtros.find((f) => f.valor === 'novo'), { valor: 'novo', rotulo: 'Aguardando pagamento', total: 2 });
   const feito = lista.pedidos.find((p) => p.codigo === codigo);
-  assert.equal(feito.statusRotulo, 'Novo');
+  assert.equal(feito.statusRotulo, 'Aguardando pagamento');
+  assert.equal(feito.cliente, 'Maria Teste');
   assert.match(feito.resumo, /^2x Drip \(M\) \+ 1 outra peça$/);
   assert.equal(feito.rotuloPecas, '3 peças');
 
@@ -302,39 +305,127 @@ test('pedidos: o painel lista, filtra, mostra e atualiza; o cliente nunca vê', 
   assert.equal(resumo.numeros.pedidosNovos, 2);
   assert.ok(resumo.pendencias.some((p) => p.link === '/admin/pedidos?status=novo'));
 
-  assert.equal((await admin.pedir('GET', `/pedidos?busca=${codigo.toLowerCase()}`)).corpo.pedidos.length, 1);
-  assert.equal((await admin.pedir('GET', '/pedidos?busca=%25')).corpo.pedidos.length, 0, '% é texto, não curinga');
+  const buscar = async (termo) => (await admin.pedir('GET', `/pedidos?busca=${encodeURIComponent(termo)}`)).corpo.pedidos.length;
+  assert.equal(await buscar(codigo.toLowerCase()), 1, 'código com hífen e minúsculo');
+  assert.equal(await buscar(codigo.replace('-', '')), 1, 'código sem hífen');
+  assert.equal(await buscar('maria@exemplo'), 2, 'e-mail');
+  assert.equal(await buscar('99999-0000'), 2, 'telefone');
+  assert.equal(await buscar('%'), 0, '% é texto, não curinga');
   assert.equal((await admin.pedir('GET', '/pedidos?status=qualquer')).corpo.pedidos.length, 2, 'filtro estranho é ignorado');
 
   const detalhe = (await admin.pedir('GET', `/pedidos/${feito.id}`)).corpo;
   assert.equal(detalhe.itens.length, 2);
   assert.equal(detalhe.itens[0].linkPeca, '/produto/drip');
   assert.match(detalhe.mensagem, new RegExp(`#${codigo}`));
-  assert.ok(detalhe.opcoesStatus.some((o) => o.valor === 'pago'));
+  assert.deepEqual(detalhe.cliente, {
+    nome: 'Maria Teste', email: 'maria@exemplo.com', telefoneTexto: '(35) 99999-0000',
+    linkWhatsapp: 'https://wa.me/5535999990000',
+    endereco: ['Rua das Flores, 100 — Apto 2', 'Centro', 'Itajubá/MG', 'CEP 37500-000']
+  });
+  assert.deepEqual(detalhe.opcoesStatus.map((o) => o.valor), ['novo', 'pago', 'em_preparacao', 'enviado', 'entregue', 'cancelado']);
+  assert.equal(detalhe.historico.length, 1);
 
-  const atualizado = await admin.pedir('PUT', `/pedidos/${feito.id}`, { status: 'pago', clienteNome: '  Maria  ', observacao: 'Pix recebido' });
-  assert.equal(atualizado.status, 200);
-  assert.equal(atualizado.corpo.statusRotulo, 'Pago');
-  assert.equal(atualizado.corpo.clienteNome, 'Maria');
-  // só o que foi enviado muda
-  const soNota = await admin.pedir('PUT', `/pedidos/${feito.id}`, { observacao: 'Enviar na sexta' });
-  assert.equal(soNota.corpo.statusRotulo, 'Pago');
-  assert.equal(soNota.corpo.clienteNome, 'Maria');
-  assert.equal((await admin.pedir('GET', '/pedidos?status=pago')).corpo.pedidos.length, 1);
+  // andamento: pago → em preparação → enviado (com rastreio); o cliente vê cada etapa
+  const mudar = (corpo) => admin.pedir('PUT', `/pedidos/${feito.id}`, corpo);
+  const pago = await mudar({ status: 'pago', observacao: '  Pix recebido  ' });
+  assert.equal(pago.status, 200);
+  assert.equal(pago.corpo.statusRotulo, 'Pagamento confirmado');
+  assert.equal(pago.corpo.observacao, 'Pix recebido');
+  const soNota = await mudar({ observacao: 'Enviar na sexta' });
+  assert.equal(soNota.corpo.statusRotulo, 'Pagamento confirmado', 'só o que foi enviado muda');
+  assert.equal(soNota.corpo.historico.length, 2, 'observação não entra no histórico');
+  await mudar({ status: 'em_preparacao' });
+  const enviado = await mudar({ status: 'enviado', rastreio: 'AA123456789BR' });
+  assert.deepEqual(enviado.corpo.historico.map((h) => h.statusRotulo),
+    ['Enviado', 'Em preparação', 'Pagamento confirmado', 'Aguardando pagamento']);
 
-  assert.equal((await admin.pedir('PUT', `/pedidos/${feito.id}`, { status: 'roubado' })).status, 400);
-  assert.equal((await admin.pedir('PUT', `/pedidos/${feito.id}`, { total: 1 })).status, 400, 'campo desconhecido é recusado');
-  assert.equal((await admin.pedir('PUT', `/pedidos/${feito.id}`, {})).status, 400);
-  assert.equal((await admin.pedir('PUT', `/pedidos/${feito.id}`, { observacao: 'x'.repeat(1001) })).status, 400);
+  const andamento = await (await consultarPedido(srv.base, codigo)).json();
+  assert.deepEqual(andamento.etapas.map((e) => [e.rotulo, e.estado, e.texto]), [
+    ['Pagamento', 'feita', 'Pagamento confirmado'],
+    ['Preparação', 'feita', 'Pedido pronto'],
+    ['Envio', 'atual', 'A caminho'],
+    ['Entrega', 'pendente', '']
+  ]);
+  assert.ok(andamento.etapas.slice(0, 3).every((e) => e.data));
+  assert.equal(andamento.rastreio, 'AA123456789BR');
+
+  const dataDoEnvio = andamento.etapas[2].data;
+  await mudar({ status: 'entregue' });
+  const entregue = await (await consultarPedido(srv.base, codigo)).json();
+  assert.deepEqual(entregue.etapas.map((e) => e.estado), ['feita', 'feita', 'feita', 'feita']);
+  assert.equal(entregue.etapas[2].texto, 'Enviado');
+  assert.equal(entregue.etapas[2].data, dataDoEnvio, 'Envio mostra a data do envio, não a da entrega');
+  assert.ok(entregue.etapas[3].data);
+
+  await mudar({ status: 'cancelado' });
+  const cancelado = await (await consultarPedido(srv.base, codigo)).json();
+  assert.equal(cancelado.cancelado, true);
+  assert.deepEqual(cancelado.etapas, []);
+  assert.equal(cancelado.rastreio, null);
+  assert.equal((await admin.pedir('GET', '/pedidos?status=cancelado')).corpo.pedidos.length, 1);
+
+  assert.equal((await mudar({ status: 'roubado' })).status, 400);
+  assert.equal((await mudar({ clienteNome: 'X' })).status, 400, 'campo desconhecido é recusado');
+  assert.equal((await mudar({})).status, 400);
+  assert.equal((await mudar({ observacao: 'x'.repeat(1001) })).status, 400);
   assert.equal((await admin.pedir('PUT', '/pedidos/999999', { status: 'pago' })).status, 404);
   const semCabecalho = await fetch(`${srv.base}/api/admin/pedidos/${feito.id}`, {
-    method: 'PUT', headers: { 'content-type': 'application/json', origin: ORIGEM, cookie: admin.cookie }, body: JSON.stringify({ status: 'cancelado' })
+    method: 'PUT', headers: { 'content-type': 'application/json', origin: ORIGEM, cookie: admin.cookie }, body: JSON.stringify({ status: 'novo' })
   });
   assert.equal(semCabecalho.status, 403);
 
   const atividade = (await admin.pedir('GET', '/auditoria')).corpo;
-  assert.ok(atividade.some((a) => a.descricao === `atualizou o pedido #${codigo} (Pago)`));
+  assert.ok(atividade.some((a) => a.descricao === `atualizou o pedido #${codigo} (Pagamento confirmado)`));
+  assert.ok(atividade.some((a) => a.descricao === `atualizou o pedido #${codigo} (Enviado)`));
   assert.ok(atividade.some((a) => a.descricao === `atualizou o pedido #${codigo}`));
+});
+
+test('pedidos: o painel corrige os dados de entrega, com as mesmas regras do site', async () => {
+  const { codigo } = await (await fazerPedido(srv.base, [{ id: 'drip', tamanho: 'M', qtd: 1 }])).json();
+  const id = (await admin.pedir('GET', `/pedidos?busca=${encodeURIComponent(codigo)}`)).corpo.pedidos[0].id;
+  const antes = (await admin.pedir('GET', `/pedidos/${id}`)).corpo;
+  assert.deepEqual(antes.clienteEdicao, {
+    nome: 'Maria Teste', email: 'maria@exemplo.com', telefone: '(35) 99999-0000', cep: '37500-000',
+    logradouro: 'Rua das Flores', numero: '100', complemento: 'Apto 2', bairro: 'Centro', cidade: 'Itajubá', uf: 'MG'
+  });
+  assert.equal(antes.ufs.length, 27);
+
+  const ruim = await admin.pedir('PUT', `/pedidos/${id}`, { cliente: { ...antes.clienteEdicao, cep: '1', uf: 'ZZ' } });
+  assert.equal(ruim.status, 400);
+  assert.deepEqual(Object.keys(ruim.corpo.campos).sort(), ['cliente.cep', 'cliente.uf']);
+  assert.equal((await admin.pedir('PUT', `/pedidos/${id}`, { cliente: { nome: 'Só o nome' } })).status, 400, 'os dados vão completos');
+
+  const ok = await admin.pedir('PUT', `/pedidos/${id}`, { cliente: { ...antes.clienteEdicao, numero: '200', complemento: '' } });
+  assert.equal(ok.status, 200);
+  assert.deepEqual(ok.corpo.cliente.endereco, ['Rua das Flores, 200', 'Centro', 'Itajubá/MG', 'CEP 37500-000']);
+  assert.equal(ok.corpo.statusRotulo, 'Aguardando pagamento');
+  assert.equal(ok.corpo.historico.length, 1, 'corrigir o endereço não muda a situação');
+
+  const atividade = (await admin.pedir('GET', '/auditoria')).corpo;
+  assert.ok(atividade.some((a) => a.descricao === `atualizou o pedido #${codigo} (dados de entrega)`));
+});
+
+test('no Render, cada visitante tem o próprio limite (IP do CF-Connecting-IP), e o X-Forwarded-For não engana', async () => {
+  const servidor = await subirServidor(pool, { limiteLogin: 2, config: { cabecalhoIp: 'cf-connecting-ip' } });
+  try {
+    const tentar = (ip, extra = {}) => fetch(`${servidor.base}/api/admin/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: ORIGEM, 'x-oppe-admin': '1', 'cf-connecting-ip': ip, ...extra },
+      body: JSON.stringify({ email: 'ninguem@teste.local', senha: 'qualquer-coisa' })
+    });
+    const mesmoVisitante = [
+      await tentar('203.0.113.10'),
+      await tentar('203.0.113.10'),
+      await tentar('203.0.113.10', { 'x-forwarded-for': '198.51.100.7' })
+    ].map((r) => r.status);
+    assert.deepEqual(mesmoVisitante, [401, 401, 429], 'o mesmo visitante é barrado, mesmo inventando X-Forwarded-For');
+    assert.equal((await tentar('203.0.113.20')).status, 401, 'outro visitante não é afetado');
+
+    const { rows: [ultimo] } = await pool.query("SELECT host(ip) AS ip FROM auditoria WHERE acao = 'login_falhou' ORDER BY id DESC LIMIT 1");
+    assert.equal(ultimo.ip, '203.0.113.20', 'a atividade registra o IP real do visitante');
+  } finally {
+    await servidor.fechar();
+  }
 });
 
 test('a atividade registra as ações do painel', async () => {

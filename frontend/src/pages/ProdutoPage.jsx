@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { useSacola } from '../context/SacolaContext.jsx';
-import { buscarProduto, linkPedidoWhatsapp, novaChavePedido } from '../api/client.js';
+import { buscarProduto } from '../api/client.js';
 import { useDados } from '../hooks/useDados.js';
 import Estrela from '../components/ui/Estrela.jsx';
 import Galeria from '../components/produto/Galeria.jsx';
@@ -34,13 +34,11 @@ export default function ProdutoPage() {
 }
 
 function DetalheProduto({ produto }) {
-  const { adicionar, abrir } = useSacola();
+  const { adicionar, garantir, abrir } = useSacola();
   const [tamanho, setTamanho] = useState('');
   const [erroTamanho, setErroTamanho] = useState(false);
   const [medidasAbertas, setMedidasAbertas] = useState(false);
   const refPrimeiroTamanho = useRef(null);
-  // um pedido por peça + tamanho: tocar de novo no botão reabre o mesmo pedido
-  const chavePedido = useMemo(() => novaChavePedido(), [tamanho]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     document.title = `${produto.nome} (${produto.cor}) — Oppe Clothing`;
@@ -87,20 +85,19 @@ function DetalheProduto({ produto }) {
           />
 
           <div className="produto__acoes">
-            <a
+            <button
+              type="button"
               className="btn btn--dark btn--xl btn--block"
-              href={tamanho ? linkPedidoWhatsapp([{ id: produto.id, tamanho, qtd: 1 }], chavePedido) : '#'}
-              target="_blank"
-              rel="noopener"
-              onClick={(e) => { if (!exigirTamanho()) e.preventDefault(); }}
+              // garante a peça sem somar outra unidade; o formulário mostra tudo o que vai no pedido
+              onClick={() => { if (exigirTamanho()) { garantir(produto.id, tamanho); abrir('dados'); } }}
             >
               <Estrela tamanho={16} cor="#E01E14" />
-              Pedir pelo WhatsApp
-            </a>
+              Comprar agora
+            </button>
             <button
               type="button"
               className="btn btn--lg btn--block"
-              onClick={() => { if (exigirTamanho()) { adicionar(produto.id, tamanho); abrir(); } }}
+              onClick={() => { if (exigirTamanho()) { adicionar(produto.id, tamanho); abrir('sacola'); } }}
             >
               Adicionar à sacola
             </button>

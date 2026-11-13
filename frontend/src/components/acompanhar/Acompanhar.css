@@ -1,0 +1,79 @@
+/* Acompanhar pedido — consulta pelo código e linha do tempo (pagamento, preparação, envio, entrega). */
+
+.acompanhar { padding-block: 56px 96px; display: flex; flex-direction: column; gap: 24px; max-width: 920px; }
+.acompanhar__topo { display: flex; flex-direction: column; gap: 14px; }
+.acompanhar__titulo { font-size: clamp(48px, 7vw, 96px); }
+.acompanhar__intro { font-size: 17px; color: var(--grafite); max-width: 52ch; }
+
+.acompanhar__form { display: flex; flex-wrap: wrap; gap: 10px; }
+.acompanhar__campo {
+  flex: 1 1 260px; min-height: 52px; padding: 0 16px;
+  font-family: var(--f-mono); font-size: 18px; letter-spacing: 0.12em; text-transform: uppercase;
+  border: 1.5px solid var(--preto); border-radius: 0; background: #fff; color: var(--preto);
+}
+.acompanhar__campo::placeholder { color: var(--pedra); }
+.acompanhar__campo:focus-visible { outline: 2px solid var(--vermelho); outline-offset: 1px; }
+.acompanhar__campo[aria-invalid="true"] { border-color: var(--vinho); border-width: 2px; }
+.acompanhar__erro { color: var(--vinho); font-weight: 700; }
+
+/* ---------- resultado ---------- */
+.acompanhar__resultado { border: 1.5px solid var(--preto); padding: clamp(18px, 3vw, 32px); display: flex; flex-direction: column; gap: 26px; }
+.acompanhar__resultado:focus { outline: none; }
+.acompanhar__cabeca { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.acompanhar__cabeca > div { display: flex; flex-direction: column; gap: 6px; }
+.acompanhar__rotulo { font-family: var(--f-mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--grafite); }
+.acompanhar__codigo { font-family: var(--f-display); font-weight: 400; font-size: clamp(40px, 5vw, 56px); line-height: 1; letter-spacing: 0.03em; }
+.acompanhar__data { font-size: 14px; color: var(--grafite); }
+.acompanhar__status {
+  padding: 7px 12px; border: 1.5px solid var(--preto); white-space: nowrap;
+  font-family: var(--f-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+}
+.acompanhar__status--novo { background: var(--vermelho); border-color: var(--vermelho); color: #fff; }
+.acompanhar__status--pago, .acompanhar__status--em_preparacao, .acompanhar__status--enviado { background: var(--preto); color: var(--cru); }
+.acompanhar__status--cancelado { color: var(--grafite); border-color: var(--grafite); }
+.acompanhar__resumo { font-size: 17px; max-width: 60ch; }
+
+/* ---------- linha do tempo ---------- */
+.etapas { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.etapa { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 46px 14px 0 0; }
+/* trilho até a próxima etapa */
+.etapa::before { content: ''; position: absolute; top: 15px; left: 32px; right: 0; height: 3px; background: var(--concreto); }
+.etapa:last-child::before { display: none; }
+.etapa--feita::before { background: var(--preto); }
+.etapa__marca {
+  position: absolute; top: 0; left: 0; width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--concreto); background: var(--cru); font-weight: 700; font-size: 15px;
+}
+.etapa--feita .etapa__marca { background: var(--preto); border-color: var(--preto); color: var(--cru); }
+.etapa--atual .etapa__marca { background: var(--vermelho); border-color: var(--vermelho); box-shadow: inset 0 0 0 7px var(--cru); }
+.etapa__rotulo { font-family: var(--f-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+.etapa--pendente .etapa__rotulo { color: var(--pedra); }
+.etapa__texto { font-size: 15px; font-weight: 700; line-height: 1.3; }
+.etapa--atual .etapa__texto { color: var(--vinho); }
+.etapa__data { font-family: var(--f-mono); font-size: 13px; color: var(--grafite); }
+
+.acompanhar__rastreio { padding: 14px 16px; background: var(--concreto-claro); font-size: 15px; }
+.acompanhar__rastreio strong { font-family: var(--f-mono); letter-spacing: 0.06em; }
+
+/* ---------- peças ---------- */
+.acompanhar__subtitulo { margin-bottom: 6px; font-family: var(--f-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+.acompanhar__pecas ul { list-style: none; margin: 0; padding: 0; }
+.acompanhar__peca { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 14px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--concreto); }
+.acompanhar__peca strong { display: block; }
+.acompanhar__peca span { font-size: 14px; color: var(--grafite); }
+.acompanhar__foto { width: 64px; height: 64px; background: var(--concreto); }
+.acompanhar__foto img { width: 100%; height: 100%; object-fit: contain; }
+.acompanhar__total { display: flex; justify-content: space-between; align-items: baseline; padding-top: 12px; font-family: var(--f-mono); }
+.acompanhar__total span { font-size: 12px; font-weight: 700; letter-spacing: 0.12em; }
+.acompanhar__total strong { font-size: 20px; }
+.acompanhar__resultado > .btn { align-self: flex-start; }
+
+@media (max-width: 759px) {
+  .acompanhar { padding-block: 32px 64px; }
+  .acompanhar__form .btn { flex: 1 1 100%; }
+  /* no celular a linha do tempo fica de pé */
+  .etapas { grid-template-columns: minmax(0, 1fr); }
+  .etapa { padding: 4px 0 24px 48px; min-height: 60px; }
+  .etapa::before { top: 32px; bottom: 0; left: 15px; right: auto; width: 3px; height: auto; }
+}

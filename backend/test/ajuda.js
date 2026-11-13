@@ -12,8 +12,8 @@ export async function prepararBanco() {
   if (!config.databaseUrlTeste) throw new Error('Defina DATABASE_URL_TESTE em backend/.env para rodar os testes.');
   const pool = criarPool(config.databaseUrlTeste);
   await migrar(pool);
-  await pool.query(`TRUNCATE auditoria, sessoes_admin, usuarios_admin, pedido_itens, pedidos, produto_imagens, produtos,
-                    colecoes, configuracoes_loja RESTART IDENTITY CASCADE`);
+  await pool.query(`TRUNCATE auditoria, sessoes_admin, usuarios_admin, pedido_eventos, pedido_itens, pedidos,
+                    produto_imagens, produtos, colecoes, configuracoes_loja RESTART IDENTITY CASCADE`);
   await semearSeVazio(pool, { whatsapp: '5535997653327' });
   return pool;
 }
@@ -33,6 +33,28 @@ export async function subirServidor(pool, { config: ajustes = {}, limiteLogin = 
     base: `http://127.0.0.1:${servidor.address().port}`,
     fechar: () => new Promise((ok) => servidor.close(ok))
   };
+}
+
+/** Dados de entrega válidos (fictícios) para criar pedidos nos testes. */
+export const CLIENTE_TESTE = Object.freeze({
+  nome: 'Maria Teste', email: 'maria@exemplo.com', telefone: '(35) 99999-0000', cep: '37500-000',
+  logradouro: 'Rua das Flores', numero: '100', complemento: 'Apto 2', bairro: 'Centro', cidade: 'Itajubá', uf: 'MG'
+});
+
+/** Faz um pedido como o site faz (POST com Origin do site). */
+export function fazerPedido(base, itens, { chave = crypto.randomUUID(), cliente = CLIENTE_TESTE, origem = ORIGEM } = {}) {
+  return fetch(`${base}/api/pedidos`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', ...(origem ? { origin: origem } : {}) },
+    body: JSON.stringify({ chave, itens, cliente })
+  });
+}
+
+/** Consulta pública pelo código. */
+export function consultarPedido(base, codigo) {
+  return fetch(`${base}/api/pedidos/consulta`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ codigo })
+  });
 }
 
 /** Cliente do painel que guarda o cookie de sessão, como um navegador. */

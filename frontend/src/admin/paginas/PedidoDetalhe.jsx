@@ -14,6 +14,7 @@ export default function PedidoDetalhe() {
   return (
     <>
       <Cabecalho sobre="PEDIDO" titulo={pedido ? `#${pedido.codigo}` : 'Pedido'}>
+        {pedido && <a className="btn" href={pedido.acompanharUrl} target="_blank" rel="noopener">Ver como o cliente ↗</a>}
         <Link className="btn" to="/admin/pedidos">Todos os pedidos</Link>
       </Cabecalho>
       <Alerta>{erro?.message}</Alerta>
@@ -21,6 +22,8 @@ export default function PedidoDetalhe() {
       {pedido && (
         <div className="adm-pedido">
           <div className="adm-pedido__principal">
+            <Cliente pedido={pedido} onSalvo={setSalvo} />
+
             <section className="adm-bloco" aria-labelledby="pecas-titulo">
               <div className="adm-bloco__titulo">
                 <h2 className="adm-subtitulo" id="pecas-titulo">Peças</h2>
@@ -53,14 +56,127 @@ export default function PedidoDetalhe() {
             <Mensagem texto={pedido.mensagem} />
           </div>
 
-          <FormPedido key={pedido.id} pedido={pedido} onSalvo={setSalvo} />
+          <div className="adm-pedido__lateral">
+            <FormPedido key={pedido.id} pedido={pedido} onSalvo={setSalvo} />
+            <section className="adm-bloco" aria-labelledby="historico-titulo">
+              <h2 className="adm-subtitulo" id="historico-titulo">Histórico</h2>
+              <ol className="adm-historico">
+                {pedido.historico.map((h, n) => (
+                  <li key={n}><strong>{h.statusRotulo}</strong><span>{dataHora(h.quando)}</span></li>
+                ))}
+              </ol>
+            </section>
+          </div>
         </div>
       )}
     </>
   );
 }
 
-const camposDoForm = (p) => ({ status: p.status, clienteNome: p.clienteNome, clienteContato: p.clienteContato, observacao: p.observacao });
+/** Dados que o cliente informou ao finalizar (só o painel vê). A loja pode corrigir. */
+function Cliente({ pedido, onSalvo }) {
+  const { cliente } = pedido;
+  const [editando, setEditando] = useState(false);
+
+  if (editando) {
+    return (
+      <EditarEntrega
+        pedido={pedido}
+        onCancelar={() => setEditando(false)}
+        onSalvo={(atualizado) => { onSalvo(atualizado); setEditando(false); }}
+      />
+    );
+  }
+
+  return (
+    <section className="adm-bloco" aria-labelledby="cliente-titulo">
+      <div className="adm-bloco__titulo">
+        <h2 className="adm-subtitulo" id="cliente-titulo">Cliente e entrega</h2>
+        <button type="button" className="btn" onClick={() => setEditando(true)}>Corrigir dados</button>
+      </div>
+      <div className="adm-cliente">
+        <div>
+          <span className="adm-cliente__rotulo">Cliente</span>
+          <strong>{cliente.nome || '—'}</strong>
+          {cliente.email && <a href={`mailto:${cliente.email}`}>{cliente.email}</a>}
+          {cliente.telefoneTexto && (
+            cliente.linkWhatsapp
+              ? <a href={cliente.linkWhatsapp} target="_blank" rel="noopener noreferrer">{cliente.telefoneTexto} · WhatsApp ↗</a>
+              : <span>{cliente.telefoneTexto}</span>
+          )}
+        </div>
+        <div>
+          <span className="adm-cliente__rotulo">Endereço de entrega</span>
+          {cliente.endereco.length
+            ? <address>{cliente.endereco.map((linha, n) => <span key={n}>{linha}</span>)}</address>
+            : <span className="adm-texto">Não informado.</span>}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/** Corrige nome, contato e endereço. O servidor valida com as mesmas regras do site. */
+function EditarEntrega({ pedido, onCancelar, onSalvo }) {
+  const [form, setForm] = useState(pedido.clienteEdicao);
+  const [erros, setErros] = useState({});
+  const [mensagem, setMensagem] = useState('');
+  const [salvando, setSalvando] = useState(false);
+
+  const mudar = (campo) => (e) => setForm((f) => ({ ...f, [campo]: e.target.value }));
+  const campo = (nome, rotulo, props = {}) => (
+    <Campo rotulo={rotulo} value={form[nome]} onChange={mudar(nome)} erro={erros[nome]} autoComplete="off" {...props} />
+  );
+
+  async function salvar(e) {
+    e.preventDefault();
+    setSalvando(true);
+    setErros({});
+    setMensagem('');
+    try {
+      onSalvo(await api.put(`/pedidos/${pedido.id}`, { cliente: form }));
+    } catch (falha) {
+      const campos = {};
+      for (const [chave, texto] of Object.entries(falha.campos ?? {})) campos[chave.replace(/^cliente\./, '')] = texto;
+      setErros(campos);
+      setMensagem(falha.message);
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <form className="adm-bloco" onSubmit={salvar} noValidate>
+      <h2 className="adm-subtitulo">Corrigir dados de entrega</h2>
+      <p className="adm-texto">Use quando o cliente avisar de um erro. O pedido continua com o mesmo código e a mesma situação.</p>
+      <Alerta>{mensagem}</Alerta>
+      <div className="adm-grade">
+        {campo('nome', 'Nome completo', { maxLength: 80 })}
+        {campo('email', 'E-mail', { tipo: 'email', maxLength: 254 })}
+        {campo('telefone', 'WhatsApp', { tipo: 'tel', maxLength: 20 })}
+        {campo('cep', 'CEP', { maxLength: 9 })}
+        {campo('logradouro', 'Rua', { maxLength: 120 })}
+        {campo('numero', 'Número', { maxLength: 20 })}
+        {campo('complemento', 'Complemento', { maxLength: 80 })}
+        {campo('bairro', 'Bairro', { maxLength: 80 })}
+        {campo('cidade', 'Cidade', { maxLength: 80 })}
+        <Campo
+          rotulo="Estado"
+          opcoes={[{ valor: '', rotulo: 'UF' }, ...pedido.ufs.map((uf) => ({ valor: uf, rotulo: uf }))]}
+          value={form.uf}
+          onChange={mudar('uf')}
+          erro={erros.uf}
+        />
+      </div>
+      <div className="adm-acoes">
+        <button type="submit" className="btn btn--dark" disabled={salvando}>{salvando ? 'Salvando…' : 'Salvar dados'}</button>
+        <button type="button" className="btn" onClick={onCancelar}>Cancelar</button>
+      </div>
+    </form>
+  );
+}
+
+const camposDoForm = (p) => ({ status: p.status, rastreio: p.rastreio, observacao: p.observacao });
 
 function FormPedido({ pedido, onSalvo }) {
   const [form, setForm] = useState(() => camposDoForm(pedido));
@@ -81,7 +197,7 @@ function FormPedido({ pedido, onSalvo }) {
       const atualizado = await api.put(`/pedidos/${pedido.id}`, form);
       onSalvo(atualizado);
       setForm(camposDoForm(atualizado)); // mostra o que o servidor guardou (ex.: sem espaços sobrando)
-      setAviso('Pedido atualizado.');
+      setAviso('Pedido atualizado. O cliente já vê a nova situação.');
     } catch (falha) {
       setErros(falha.campos ?? {});
       setMensagem(falha.message);
@@ -91,8 +207,8 @@ function FormPedido({ pedido, onSalvo }) {
   }
 
   return (
-    <form className="adm-bloco adm-pedido__lateral" onSubmit={salvar} noValidate>
-      <h2 className="adm-subtitulo">Atendimento</h2>
+    <form className="adm-bloco" onSubmit={salvar} noValidate>
+      <h2 className="adm-subtitulo">Andamento</h2>
       <Alerta tipo="ok">{aviso}</Alerta>
       <Alerta>{mensagem}</Alerta>
       <Campo
@@ -101,11 +217,18 @@ function FormPedido({ pedido, onSalvo }) {
         value={form.status}
         onChange={mudar('status')}
         erro={erros.status}
-        ajuda="Novo: o cliente abriu o WhatsApp com o pedido. Confira se a mensagem chegou."
+        ajuda="É o que o cliente vê em Acompanhar pedido: pagamento, preparação, envio e entrega."
       />
-      <Campo rotulo="Nome do cliente" value={form.clienteNome} onChange={mudar('clienteNome')} erro={erros.clienteNome} maxLength={80} autoComplete="off" />
-      <Campo rotulo="Contato" value={form.clienteContato} onChange={mudar('clienteContato')} erro={erros.clienteContato} maxLength={80} autoComplete="off" ajuda="WhatsApp ou Instagram do cliente." />
-      <Campo rotulo="Observações" multilinha value={form.observacao} onChange={mudar('observacao')} erro={erros.observacao} maxLength={1000} ajuda="Frete, pagamento, endereço de entrega…" />
+      <Campo
+        rotulo="Código de rastreio"
+        value={form.rastreio}
+        onChange={mudar('rastreio')}
+        erro={erros.rastreio}
+        maxLength={60}
+        autoComplete="off"
+        ajuda="Aparece para o cliente quando o pedido estiver Enviado."
+      />
+      <Campo rotulo="Observações" multilinha value={form.observacao} onChange={mudar('observacao')} erro={erros.observacao} maxLength={1000} ajuda="Só a loja vê. Frete, forma de pagamento…" />
       <button type="submit" className="btn btn--dark" disabled={salvando}>{salvando ? 'Salvando…' : 'Salvar'}</button>
     </form>
   );

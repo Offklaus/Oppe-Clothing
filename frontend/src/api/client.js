@@ -28,12 +28,39 @@ export const buscarProduto = (slug, sinal) => pedirJson(`/api/produtos/${encodeU
 /** O servidor confere a sacola e devolve os itens válidos, os valores e o link do pedido. */
 export const calcularSacola = (itens, sinal) => pedirJson('/api/pedidos/previa', { corpo: { itens }, sinal });
 
+/** Erro com a mensagem do servidor e, quando houver, o erro de cada campo. */
+export class ErroPedido extends Error {
+  constructor(status, mensagem, campos = {}) {
+    super(mensagem);
+    this.status = status;
+    this.campos = campos;
+  }
+}
+
+async function postar(url, corpo) {
+  let resposta;
+  try {
+    resposta = await fetch(url, {
+      method: 'POST',
+      headers: { accept: 'application/json', 'content-type': 'application/json' },
+      body: JSON.stringify(corpo)
+    });
+  } catch {
+    throw new ErroPedido(0, 'Sem conexão. Confira a internet e tente de novo.');
+  }
+  const dados = await resposta.json().catch(() => ({}));
+  if (!resposta.ok) throw new ErroPedido(resposta.status, dados.erro ?? 'Algo deu errado. Tente de novo.', dados.campos ?? {});
+  return dados;
+}
+
 /**
- * Link do pedido de uma peça só (o servidor valida, registra e redireciona para o WhatsApp).
- * A chave identifica este pedido: abrir o mesmo link de novo não cria outro.
+ * Finaliza o pedido: peças + dados do cliente. O servidor confere tudo, registra
+ * e devolve { codigo, whatsappUrl, acompanharUrl }. A chave evita pedido repetido.
  */
-export const linkPedidoWhatsapp = (itens, chave) =>
-  `/api/pedidos/whatsapp?itens=${encodeURIComponent(itens.map((i) => `${i.id}:${i.tamanho}:${i.qtd}`).join(','))}&chave=${chave}`;
+export const criarPedido = ({ chave, itens, cliente }) => postar('/api/pedidos', { chave, itens, cliente });
+
+/** Andamento do pedido pelo código (sem dados pessoais). */
+export const consultarPedido = (codigo) => postar('/api/pedidos/consulta', { codigo });
 
 /** Identificador aleatório (UUID v4) para a chave do pedido. */
 export function novaChavePedido() {

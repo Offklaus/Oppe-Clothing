@@ -1,6 +1,7 @@
 // Esquemas de entrada do painel. Campos desconhecidos são recusados (strictObject).
 import { z } from 'zod';
 import { STATUS } from '../servicos/pedido.js';
+import { TELEFONE_BR, UFS, telefoneComPais } from '../servicos/formatos.js';
 
 const texto = (max, rotulo) => z.string({ error: `${rotulo}: valor inválido.` }).trim().max(max, `${rotulo}: no máximo ${max} caracteres.`);
 const obrigatorio = (max, rotulo) => texto(max, rotulo).min(1, `Preencha: ${rotulo.toLowerCase()}.`);
@@ -93,13 +94,37 @@ export const esquemaTrocaSenha = z.strictObject({
 export const esquemaNovaSenha = z.strictObject({ novaSenha: z.string().max(128) });
 
 const STATUS_PEDIDO = Object.keys(STATUS);
+const soNumeros = (s) => s.replace(/\D/g, '');
 
-/** Alteração de pedido no painel: só os campos enviados mudam. */
+/** "(35) 99999-9999", "35999999999" ou "+55 35 99999-9999" → "5535999999999" (mesma regra do WhatsApp da loja). */
+const telefone = z.string({ error: 'Telefone inválido.' }).max(30, 'Telefone inválido.')
+  .transform(telefoneComPais)
+  .refine((d) => TELEFONE_BR.test(d), 'Telefone: informe DDD + número, ex.: (35) 99999-9999.');
+
+/** Dados que o cliente informa antes de abrir o WhatsApp (vão só para o painel). */
+export const esquemaCliente = z.strictObject({
+  nome: obrigatorio(80, 'Nome').refine((n) => n.split(/\s+/).length >= 2, 'Nome: escreva nome e sobrenome.'),
+  email,
+  telefone,
+  cep: z.string({ error: 'CEP inválido.' }).max(12, 'CEP inválido.').transform(soNumeros)
+    .refine((d) => /^[0-9]{8}$/.test(d), 'CEP: informe os 8 números.'),
+  logradouro: obrigatorio(120, 'Rua'),
+  numero: obrigatorio(20, 'Número'),
+  complemento: opcional(80, 'Complemento'),
+  bairro: obrigatorio(80, 'Bairro'),
+  cidade: obrigatorio(80, 'Cidade'),
+  uf: z.string({ error: 'Escolha o estado.' }).trim().toUpperCase().pipe(z.enum(UFS, { error: 'Escolha o estado.' }))
+});
+
+/**
+ * Alteração de pedido no painel: só os campos enviados mudam.
+ * "cliente" corrige nome, contato e endereço (todos juntos, com as mesmas regras do site).
+ */
 export const esquemaPedido = z.strictObject({
   status: z.enum(STATUS_PEDIDO, { error: 'Escolha uma situação válida.' }).optional(),
-  clienteNome: texto(80, 'Nome do cliente').optional(),
-  clienteContato: texto(80, 'Contato').optional(),
-  observacao: texto(1000, 'Observações').optional()
+  rastreio: texto(60, 'Código de rastreio').optional(),
+  observacao: texto(1000, 'Observações').optional(),
+  cliente: esquemaCliente.optional()
 });
 
 /** Filtros da lista de pedidos (vêm da URL; valor estranho vira "sem filtro"). */
@@ -108,8 +133,17 @@ export const esquemaFiltroPedidos = z.object({
   busca: z.string().trim().max(40).optional().catch(undefined)
 });
 
-/** Chave do link de pedido, gerada pelo site (evita pedido repetido). */
-export const chavePedido = z.uuid();
+/** Novo pedido vindo da sacola. A chave (gerada no site) evita pedido repetido. */
+export const esquemaNovoPedido = z.strictObject({
+  chave: z.uuid({ error: 'Pedido inválido. Recarregue a página e tente de novo.' }),
+  itens: z.array(z.unknown(), { error: 'Pedido inválido.' }).max(50, 'Pedido grande demais.'),
+  cliente: esquemaCliente
+});
+
+/** Consulta pública: só o código. */
+export const esquemaConsulta = z.strictObject({
+  codigo: z.string({ error: 'Informe o código do pedido.' }).trim().min(1, 'Informe o código do pedido.').max(40, 'Código inválido.')
+});
 
 // ids do banco são "integer": acima disso a consulta falharia com erro interno
 export const idNumerico = z.coerce.number().int().positive().max(2_147_483_647);

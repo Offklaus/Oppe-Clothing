@@ -49,6 +49,7 @@ export default function Footer({ compacto = false }) {
             <Link to="/#catalogo">Catálogo</Link>
             {loja?.colecaoDestaque && <Link to="/#colecoes">Coleções</Link>}
             <Link to="/#sobre">Sobre</Link>
+            <Link to="/acompanhar">Acompanhar pedido</Link>
           </div>
 
           <Selo tamanho={72} className="footer__selo" />

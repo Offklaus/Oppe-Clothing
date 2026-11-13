@@ -38,11 +38,10 @@ export default function Header() {
             <button
               type="button"
               className="btn btn--dark header__cta"
-              onClick={abrir}
-              aria-label={pecas ? `Abrir sacola, ${plural(pecas, 'peça', 'peças')}` : 'Pedir no WhatsApp: abrir sacola'}
+              onClick={() => abrir()}
+              aria-label={pecas ? `Pedidos: sacola com ${plural(pecas, 'peça', 'peças')} e acompanhar pedido` : 'Pedidos: sacola e acompanhar pedido'}
             >
-              <span className="cta-longa">Pedir no WhatsApp</span>
-              <span className="cta-curta">Pedir</span>
+              <span>Pedidos</span>
               {pecas > 0 && <span className="bag-count">{pecas}</span>}
             </button>
             <button

@@ -1,4 +1,5 @@
 import rateLimit from 'express-rate-limit';
+import { config } from '../config.js';
 import { ErroHttp } from '../erros.js';
 import { buscarSessao, COOKIE_SESSAO } from './sessao.js';
 
@@ -43,28 +44,28 @@ export function protegerCsrf(origensPermitidas) {
   };
 }
 
-/** Limite de requisições por IP. `pagina` (opcional) responde em HTML, para rotas abertas no navegador. */
-export function limitador({ janelaMs, limite, mensagem, pagina }) {
+/** Limite de requisições por visitante (req.ip — veja config.cabecalhoIp para o IP atrás do proxy). */
+export function limitador({ janelaMs, limite, mensagem }) {
   return rateLimit({
     windowMs: janelaMs,
     limit: limite,
     standardHeaders: 'draft-8',
     legacyHeaders: false,
-    handler: (req, res) => (pagina
-      ? res.status(429).type('html').send(pagina(mensagem))
-      : res.status(429).json({ erro: mensagem }))
+    // com o IP vindo do cabeçalho do proxy, o X-Forwarded-For é ignorado de propósito (não é aviso de erro)
+    validate: { xForwardedForHeader: !config.cabecalhoIp },
+    handler: (req, res) => res.status(429).json({ erro: mensagem })
   });
 }
 
 /**
- * Pedido só é registrado quando o cliente abre o link a partir do próprio site.
- * Um site de terceiros não consegue criar pedido falso embutindo o link (imagem, script, iframe)
- * nem levando o visitante até ele. Navegadores antigos não mandam estes cabeçalhos: aí vale o limite por IP.
+ * Só aceita a requisição vinda das páginas do próprio site (cabeçalho Origin).
+ * O navegador sempre manda Origin num POST feito por fetch; um site de terceiros não consegue
+ * fingir o da loja. Usado no envio de pedido do site (o painel tem a proteção dele em protegerCsrf).
  */
-export function navegacaoDoSite(req) {
-  const site = req.get('sec-fetch-site');
-  const destino = req.get('sec-fetch-dest');
-  if (site && !['same-origin', 'same-site', 'none'].includes(site)) return false;
-  if (destino && destino !== 'document') return false;
-  return true;
+export function exigirOrigem(origensPermitidas) {
+  const permitidas = new Set(origensPermitidas);
+  return (req, res, next) => {
+    if (!permitidas.has(req.get('origin'))) throw new ErroHttp(403, 'Para fazer o pedido, use o site da loja.');
+    next();
+  };
 }
