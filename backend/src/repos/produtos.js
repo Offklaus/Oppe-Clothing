@@ -3,7 +3,9 @@ const SELECT_BASE = `
   SELECT p.*, c.slug AS colecao_slug, c.nome AS colecao_nome, c.chamada AS colecao_chamada,
          c.ativa AS colecao_ativa, c.ordem AS colecao_ordem,
          COALESCE((SELECT json_agg(json_build_object('posicao', i.posicao, 'arquivo', i.arquivo, 'lado', i.lado) ORDER BY i.posicao)
-                     FROM produto_imagens i WHERE i.produto_id = p.id), '[]'::json) AS imagens
+                     FROM produto_imagens i WHERE i.produto_id = p.id), '[]'::json) AS imagens,
+         -- quantidades por tamanho, ex.: {"P": 2, "M": 0} (só valem quando p.controla_estoque)
+         COALESCE((SELECT json_object_agg(e.tamanho, e.quantidade) FROM estoque e WHERE e.produto_id = p.id), '{}'::json) AS estoque
     FROM produtos p JOIN colecoes c ON c.id = p.colecao_id`;
 
 // Regra de visibilidade no site: peça ativa, coleção ativa e com foto principal.

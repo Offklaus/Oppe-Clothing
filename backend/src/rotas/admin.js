@@ -27,6 +27,7 @@ const DESCRICOES = {
   foto_enviada: (d) => `enviou a foto "${d.lado}" da peça ${d.nome}`,
   foto_editada: (d) => `marcou a foto da peça ${d.nome} como "${d.lado}"`,
   foto_removida: (d) => `removeu uma foto da peça ${d.nome}`,
+  estoque_ajustado: (d) => `ajustou o estoque de ${d.nome} (${d.cor}): ${d.mudancas}`,
   colecao_criada: (d) => `criou a coleção ${d.nome}`,
   colecao_editada: (d) => `editou a coleção ${d.nome}`,
   colecao_removida: (d) => `excluiu a coleção ${d.nome}`,
@@ -126,6 +127,16 @@ export function rotasAdmin({ pool, config, limiteLogin = 10 }) {
     res.json(p);
   });
 
+  // estoque por tamanho (ajuste manual); entradas e saídas ficam registradas
+  r.put('/produtos/:id/estoque', async (req, res) => {
+    const id = idNumerico(req);
+    const { produto, resumo } = await catalogo.salvarEstoque(pool, id, validar(esquemas.esquemaEstoque, req.body), req.admin);
+    if (resumo.mudancas.length) {
+      await registrar(req, 'estoque_ajustado', 'produto', id, { nome: resumo.nome, cor: resumo.cor, mudancas: resumo.mudancas.join(', ') });
+    }
+    res.json(produto);
+  });
+
   r.delete('/produtos/:id/imagens/:posicao', async (req, res) => {
     const id = idNumerico(req);
     await imagens.removerFoto(pool, id, validar(esquemas.posicaoImagem, req.params.posicao));
@@ -165,7 +176,7 @@ export function rotasAdmin({ pool, config, limiteLogin = 10 }) {
 
   r.put('/pedidos/:id', async (req, res) => {
     const dados = validar(esquemas.esquemaPedido, req.body);
-    const { pedido: p, mudouStatus } = await pedidos.atualizarPedido(pool, idNumerico(req), dados);
+    const { pedido: p, mudouStatus } = await pedidos.atualizarPedido(pool, idNumerico(req), dados, req.admin);
     await registrar(req, 'pedido_editado', 'pedido', p.id, {
       codigo: p.codigo, status: mudouStatus ? p.statusRotulo : null, entrega: Boolean(dados.cliente)
     });

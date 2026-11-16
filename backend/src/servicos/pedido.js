@@ -7,9 +7,12 @@ import * as repoLoja from '../repos/loja.js';
 import * as repoPedidos from '../repos/pedidos.js';
 import { emTransacao } from '../db/pool.js';
 import { ErroHttp, naoEncontrado } from '../erros.js';
-import { precoDoProduto } from './catalogo.js';
+import * as repoEstoque from '../repos/estoque.js';
+import { disponivel, precoDoProduto } from './catalogo.js';
 import { urlDaImagem } from './armazenamento.js';
-import { LIMITE_QTD, UFS, formatarBRL, formatarCep, formatarWhatsapp, linkWhatsapp, plural, precoTexto } from './formatos.js';
+import {
+  LIMITE_QTD, UFS, formatarBRL, formatarCep, formatarCodigo, formatarWhatsapp, linkWhatsapp, plural, precoTexto
+} from './formatos.js';
 
 export const LIMITE_ITENS = 50;
 
@@ -29,8 +32,7 @@ export const STATUS = {
 const ALFABETO_CODIGO = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
 const gerarCodigo = () => Array.from({ length: 8 }, () => ALFABETO_CODIGO[randomInt(ALFABETO_CODIGO.length)]).join('');
 
-/** "K7Q2MX9P" → "K7Q2-MX9P" (mais fácil de ler e ditar). */
-export const formatarCodigo = (codigo) => (codigo.length === 8 ? `${codigo.slice(0, 4)}-${codigo.slice(4)}` : codigo);
+export { formatarCodigo };
 
 /** Aceita "#k7q2-mx9p", "K7Q2 MX9P"…; devolve null se não tem formato de código. */
 export function normalizarCodigo(texto) {
@@ -79,8 +81,30 @@ function normalizar(itens, { mapa, loja }, estrito) {
     if (existente) existente.qtd = Math.min(LIMITE_QTD, existente.qtd + qtd);
     else linhas.set(chave, { produto, tamanho, qtd });
   }
-  return { linhas: [...linhas.values()], removidos };
+
+  // estoque (só das peças que controlam): na prévia ajusta e avisa; no pedido, recusa
+  const conferidas = [];
+  const avisos = [];
+  for (const linha of linhas.values()) {
+    const disp = disponivel(linha.produto, linha.tamanho);
+    if (disp == null || linha.qtd <= disp) { conferidas.push(linha); continue; }
+    if (estrito) throw semEstoque(`${linha.produto.nome} (${linha.tamanho})`, disp);
+    if (disp === 0) {
+      removidos.push({ id: linha.produto.slug, tamanho: linha.tamanho, motivo: 'Esgotado' });
+    } else {
+      avisos.push(`${linha.produto.nome} (${linha.tamanho}): ${restam(disp)}, a quantidade foi ajustada.`);
+      conferidas.push({ ...linha, qtd: disp });
+    }
+  }
+  return { linhas: conferidas, removidos, avisos };
 }
+
+const restam = (n) => (n === 1 ? 'só resta 1 peça' : `só restam ${n} peças`);
+
+/** Pedido com mais peças do que há no estoque. */
+const semEstoque = (rotulo, disp) => new ErroHttp(409, disp
+  ? `${rotulo}: ${restam(disp)}. Volte à sacola e ajuste a quantidade.`
+  : `${rotulo} esgotou. Volte à sacola para tirar a peça.`);
 
 function somar(linhas, loja) {
   let total = 0;
@@ -99,10 +123,12 @@ function somar(linhas, loja) {
 export async function previa(db, itens) {
   conferirLista(itens);
   if (itens.length === 0) {
-    return { itens: [], removidos: [], pecas: 0, rotuloPecas: plural(0, 'PEÇA', 'PEÇAS'), totalTexto: formatarBRL(0), podeFinalizar: false };
+    return {
+      itens: [], removidos: [], avisos: [], pecas: 0, rotuloPecas: plural(0, 'PEÇA', 'PEÇAS'), totalTexto: formatarBRL(0), podeFinalizar: false
+    };
   }
   const contexto = await carregar(db, itens);
-  const { linhas, removidos } = normalizar(itens, contexto, false);
+  const { linhas, removidos, avisos } = normalizar(itens, contexto, false);
   const { pecas, totalCentavos } = somar(linhas, contexto.loja);
 
   return {
@@ -117,10 +143,11 @@ export async function previa(db, itens) {
         qtd,
         imagem: urlDaImagem(foto.arquivo),
         precoTexto: precoTexto(centavos),
-        podeAumentar: qtd < LIMITE_QTD
+        podeAumentar: qtd < Math.min(LIMITE_QTD, disponivel(produto, tamanho) ?? LIMITE_QTD)
       };
     }),
     removidos,
+    avisos,
     pecas,
     rotuloPecas: plural(pecas, 'PEÇA', 'PEÇAS'),
     totalTexto: totalCentavos == null ? 'A combinar' : formatarBRL(totalCentavos),
@@ -185,16 +212,27 @@ export async function criarPedido(pool, { chave, itens, cliente }, { siteUrl }) 
   const { pecas, totalCentavos } = somar(linhas, contexto.loja);
   const copiaDasPecas = linhas.map(({ produto, tamanho, qtd }) => ({
     produtoId: produto.id, slug: produto.slug, nome: produto.nome, cor: produto.cor,
-    tamanho, qtd, precoCentavos: precoDoProduto(produto, contexto.loja)
+    tamanho, qtd, precoCentavos: precoDoProduto(produto, contexto.loja),
+    // peça com estoque controlado sai do estoque junto com o pedido
+    reservado: Boolean(produto.controla_estoque)
   }));
 
   for (let tentativa = 1; ; tentativa++) {
     const codigo = gerarCodigo();
     const mensagem = montarMensagem({ linhas, loja: contexto.loja, pecas, totalCentavos, siteUrl, codigo, cliente });
     try {
-      await emTransacao(pool, (db) => repoPedidos.criar(db, {
-        codigo, chave, pecas, totalCentavos, mensagem, cliente, itens: copiaDasPecas
-      }));
+      await emTransacao(pool, async (db) => {
+        const { id: pedidoId } = await repoPedidos.criar(db, {
+          codigo, chave, pecas, totalCentavos, mensagem, cliente, itens: copiaDasPecas
+        });
+        // retirada atômica: se outro pedido levou a peça nesse meio-tempo, desfaz tudo
+        for (const peca of copiaDasPecas.filter((x) => x.reservado)) {
+          const saldo = await repoEstoque.retirar(db, { ...peca, motivo: 'pedido', pedidoId });
+          if (saldo == null) {
+            throw semEstoque(`${peca.nome} (${peca.tamanho})`, await repoEstoque.quantidade(db, peca.produtoId, peca.tamanho));
+          }
+        }
+      });
       return respostaDoPedido(codigo, mensagem, contexto.loja, true);
     } catch (erro) {
       if (erro.code !== '23505') throw erro;
@@ -391,9 +429,45 @@ export async function pedidoAdmin(db, id) {
 }
 
 /** Atualiza situação, rastreio e observações. Devolve o pedido e se a situação mudou. */
-export async function atualizarPedido(pool, id, dados) {
+/**
+ * Atualiza situação, rastreio, observações e dados de entrega. Devolve o pedido e se a situação mudou.
+ * Cancelar devolve as peças ao estoque; tirar do "cancelado" retira de novo (se ainda houver).
+ */
+export async function atualizarPedido(pool, id, dados, usuario = null) {
   if (!Object.values(dados).some((v) => v !== undefined)) throw new ErroHttp(400, 'Nada para alterar.');
-  const resultado = await emTransacao(pool, (db) => repoPedidos.atualizar(db, id, dados));
+  const resultado = await emTransacao(pool, async (db) => {
+    const r = await repoPedidos.atualizar(db, id, dados);
+    if (!r?.mudou) return r;
+    if (dados.status === 'cancelado') await devolverAoEstoque(db, id, usuario);
+    else if (r.statusAnterior === 'cancelado') await retirarDeNovo(db, id, usuario);
+    return r;
+  });
   if (!resultado) throw naoEncontrado('Pedido');
   return { pedido: await pedidoAdmin(pool, id), mudouStatus: resultado.mudou };
+}
+
+async function devolverAoEstoque(db, pedidoId, usuario) {
+  for (const item of await repoPedidos.itensParaEstoque(db, pedidoId)) {
+    if (!item.reservado || !item.produto_id) continue;
+    await repoEstoque.devolver(db, {
+      produtoId: item.produto_id, tamanho: item.tamanho, qtd: item.qtd,
+      motivo: 'cancelamento', pedidoId, usuarioId: usuario?.id ?? null
+    });
+    await repoPedidos.marcarReservado(db, pedidoId, item.posicao, false);
+  }
+}
+
+async function retirarDeNovo(db, pedidoId, usuario) {
+  for (const item of await repoPedidos.itensParaEstoque(db, pedidoId)) {
+    if (item.reservado || !item.produto_id || !item.controla_estoque) continue;
+    const saldo = await repoEstoque.retirar(db, {
+      produtoId: item.produto_id, tamanho: item.tamanho, qtd: item.qtd,
+      motivo: 'reativacao', pedidoId, usuarioId: usuario?.id ?? null
+    });
+    if (saldo == null) {
+      const disp = await repoEstoque.quantidade(db, item.produto_id, item.tamanho);
+      throw new ErroHttp(409, `Não dá para reativar: ${item.nome} (${item.tamanho}) tem ${plural(disp, 'peça', 'peças')} no estoque e o pedido precisa de ${item.qtd}.`);
+    }
+    await repoPedidos.marcarReservado(db, pedidoId, item.posicao, true);
+  }
 }

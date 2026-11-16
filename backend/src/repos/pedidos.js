@@ -7,7 +7,7 @@ export async function buscarPorChave(db, chave) {
   return rows[0] ?? null;
 }
 
-const COLUNAS_ITEM = 9;
+const COLUNAS_ITEM = 10;
 
 /** Grava o pedido, a cópia das peças e o primeiro evento. Chamar dentro de uma transação. */
 export async function criar(db, { codigo, chave, pecas, totalCentavos, mensagem, cliente, itens }) {
@@ -23,14 +23,15 @@ export async function criar(db, { codigo, chave, pecas, totalCentavos, mensagem,
       cliente.cep, cliente.logradouro, cliente.numero, cliente.complemento,
       cliente.bairro, cliente.cidade, cliente.uf]
   );
-  // todas as peças num INSERT só (no máximo 50 linhas × 9 colunas)
+  // todas as peças num INSERT só (no máximo 50 linhas × 10 colunas)
   const valores = itens.flatMap((item, posicao) => [
-    pedido.id, posicao, item.produtoId, item.slug, item.nome, item.cor, item.tamanho, item.qtd, item.precoCentavos
+    pedido.id, posicao, item.produtoId, item.slug, item.nome, item.cor, item.tamanho, item.qtd, item.precoCentavos,
+    Boolean(item.reservado)
   ]);
   const linhas = itens.map((_, i) =>
     `(${Array.from({ length: COLUNAS_ITEM }, (__, c) => `$${i * COLUNAS_ITEM + c + 1}`).join(', ')})`);
   await db.query(
-    `INSERT INTO pedido_itens (pedido_id, posicao, produto_id, slug, nome, cor, tamanho, qtd, preco_centavos)
+    `INSERT INTO pedido_itens (pedido_id, posicao, produto_id, slug, nome, cor, tamanho, qtd, preco_centavos, reservado)
      VALUES ${linhas.join(', ')}`,
     valores
   );
@@ -128,5 +129,24 @@ export async function atualizar(db, id, { status, rastreio, observacao, cliente 
   );
   const mudou = Boolean(status) && status !== atual.status;
   if (mudou) await db.query('INSERT INTO pedido_eventos (pedido_id, status) VALUES ($1, $2)', [id, status]);
-  return { id, mudou };
+  return { id, mudou, statusAnterior: atual.status };
+}
+
+/** Peças do pedido com o que o estoque precisa saber, travadas até o fim da transação. */
+export async function itensParaEstoque(db, pedidoId) {
+  const { rows } = await db.query(
+    `SELECT i.posicao, i.produto_id, i.nome, i.tamanho, i.qtd, i.reservado,
+            COALESCE(pr.controla_estoque, false) AS controla_estoque
+       FROM pedido_itens i
+       LEFT JOIN produtos pr ON pr.id = i.produto_id
+      WHERE i.pedido_id = $1
+      ORDER BY i.posicao
+        FOR UPDATE OF i`,
+    [pedidoId]
+  );
+  return rows;
+}
+
+export async function marcarReservado(db, pedidoId, posicao, reservado) {
+  await db.query('UPDATE pedido_itens SET reservado = $3 WHERE pedido_id = $1 AND posicao = $2', [pedidoId, posicao, reservado]);
 }

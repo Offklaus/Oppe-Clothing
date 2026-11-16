@@ -21,6 +21,9 @@ export default function Sacola() {
   } = useSacola();
   const [previa, setPrevia] = useState(null);
   const [falhou, setFalhou] = useState(false);
+  // o que o servidor ajustou na sacola (esgotou, quantidade reduzida). Fica visível até a gaveta fechar,
+  // porque a conferência seguinte (já com a sacola corrigida) não traz mais o aviso.
+  const [ajustes, setAjustes] = useState([]);
   const refFechar = useRef(null);
   const chave = JSON.stringify(itens);
   const vazia = itens.length === 0;
@@ -33,6 +36,11 @@ export default function Sacola() {
       .then((p) => {
         setPrevia(p);
         setFalhou(false);
+        const novos = [
+          ...(p.removidos.length ? ['Algumas peças saíram da sacola porque esgotaram ou não estão mais disponíveis.'] : []),
+          ...(p.avisos ?? [])
+        ];
+        if (novos.length) setAjustes(novos);
         const conferidos = p.itens.map(({ id, tamanho, qtd }) => ({ id, tamanho, qtd }));
         if (JSON.stringify(conferidos) !== chave) substituir(conferidos);
       })
@@ -40,6 +48,8 @@ export default function Sacola() {
     return () => controle.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aberta, chave]);
+
+  useEffect(() => { if (!aberta) setAjustes([]); }, [aberta]);
 
   // sem peças não há o que finalizar
   useEffect(() => { if (etapa === 'dados' && vazia) setEtapa('sacola'); }, [etapa, vazia, setEtapa]);
@@ -100,8 +110,10 @@ export default function Sacola() {
               )}
               {!vazia && falhou && <p className="bag__note" role="alert">Não deu para atualizar a sacola. Confira sua conexão.</p>}
               {!vazia && !previa && !falhou && <p className="bag__note">Calculando…</p>}
-              {!vazia && previa?.removidos.length > 0 && (
-                <p className="bag__note" role="status">Algumas peças saíram da sacola porque não estão mais disponíveis.</p>
+              {ajustes.length > 0 && (
+                <div className="bag__ajustes" role="status">
+                  {ajustes.map((texto) => <p key={texto}>{texto}</p>)}
+                </div>
               )}
               {!vazia && previa && (
                 <ul className="bag__list">

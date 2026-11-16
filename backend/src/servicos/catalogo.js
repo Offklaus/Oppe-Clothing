@@ -3,10 +3,12 @@ import * as repoProdutos from '../repos/produtos.js';
 import * as repoColecoes from '../repos/colecoes.js';
 import * as repoLoja from '../repos/loja.js';
 import * as repoPedidos from '../repos/pedidos.js';
+import * as repoEstoque from '../repos/estoque.js';
+import { emTransacao } from '../db/pool.js';
 import { ErroHttp, naoEncontrado } from '../erros.js';
 import { urlDaImagem } from './armazenamento.js';
 import {
-  LIMITE_QTD, UFS, centavosParaCampo, formatarWhatsapp, gerarSlug, normalizarInstagram, normalizarWhatsapp,
+  LIMITE_QTD, UFS, centavosParaCampo, formatarCodigo, formatarWhatsapp, gerarSlug, normalizarInstagram, normalizarWhatsapp,
   paraCentavos, plural, precoTexto, temMarcador
 } from './formatos.js';
 
@@ -15,6 +17,15 @@ const camposInvalidos = (campos) => new ErroHttp(400, 'Confira os campos destaca
 
 /** Preço da peça: o dela, ou o preço padrão da loja. */
 export const precoDoProduto = (p, loja) => p.preco_centavos ?? loja.preco_padrao_centavos ?? null;
+
+/** Quantas peças há do tamanho. null = a peça não controla estoque (sem limite). */
+export const disponivel = (p, tamanho) => (p.controla_estoque ? Number(p.estoque?.[tamanho] ?? 0) : null);
+
+/** Tamanhos da loja que acabaram nesta peça. */
+const tamanhosEsgotados = (p, loja) => (p.controla_estoque ? loja.tamanhos.filter((t) => disponivel(p, t) === 0) : []);
+
+/** Todos os tamanhos acabaram: a peça continua no catálogo com o selo ESGOTADO. */
+const pecaEsgotada = (p, loja) => p.controla_estoque && tamanhosEsgotados(p, loja).length === loja.tamanhos.length;
 
 const fotoPrincipal = (p) => p.imagens.find((i) => i.posicao === 0) ?? null;
 
@@ -35,6 +46,7 @@ export function paraCard(p, loja) {
     colecaoSlug: p.colecao_slug,
     tag: p.tag,
     precoTexto: precoTexto(precoDoProduto(p, loja)),
+    esgotado: pecaEsgotada(p, loja),
     faces: faces(p)
   };
 }
@@ -118,6 +130,8 @@ export async function detalheParaSite(db, slug) {
     galeria,
     ficha,
     tamanhos: loja.tamanhos,
+    // aparecem riscados e não dá para escolher
+    tamanhosEsgotados: tamanhosEsgotados(p, loja),
     medidas: tabelaDeMedidas(loja.medidas),
     relacionados: relacionados.map((x) => paraCard(x, loja))
   };
@@ -130,7 +144,24 @@ function pendenciasDaPeca(p, loja) {
   if (!fotoPrincipal(p)) lista.push('Sem foto principal');
   if (precoDoProduto(p, loja) == null) lista.push('Sem preço');
   if (!p.colecao_ativa) lista.push('Coleção desativada');
+  const esgotados = tamanhosEsgotados(p, loja);
+  if (pecaEsgotada(p, loja)) lista.push('Esgotada');
+  else if (esgotados.length) lista.push(`Esgotado: ${esgotados.join(', ')}`);
   return lista;
+}
+
+/** Estoque da peça para o painel: um tamanho por linha e o total. */
+function estoqueDaPeca(p, loja) {
+  const tamanhos = loja.tamanhos.map((tamanho) => ({ tamanho, quantidade: Number(p.estoque?.[tamanho] ?? 0) }));
+  const total = tamanhos.reduce((s, t) => s + t.quantidade, 0);
+  return {
+    controla: p.controla_estoque,
+    tamanhos,
+    total,
+    texto: p.controla_estoque
+      ? `${tamanhos.map((t) => `${t.tamanho} ${t.quantidade}`).join(' · ')} (${plural(total, 'peça', 'peças')})`
+      : 'Não controlado'
+  };
 }
 
 const visivelNoSite = (p) => p.ativo && p.colecao_ativa && Boolean(fotoPrincipal(p));
@@ -148,9 +179,23 @@ function paraAdminResumo(p, loja) {
     imagem: principal ? urlImagem(principal.arquivo) : null,
     visivelNoSite: visivelNoSite(p),
     urlNoSite: `/produto/${p.slug}`,
+    estoqueTexto: estoqueDaPeca(p, loja).texto,
     pendencias: pendenciasDaPeca(p, loja)
   };
 }
+
+const MOTIVOS_ESTOQUE = { ajuste: 'Ajuste', pedido: 'Pedido', cancelamento: 'Pedido cancelado', reativacao: 'Pedido reativado' };
+
+const paraMovimento = (m) => ({
+  quando: m.criado_em,
+  tamanho: m.tamanho,
+  variacaoTexto: m.variacao > 0 ? `+${m.variacao}` : String(m.variacao),
+  entrada: m.variacao > 0,
+  saldo: m.saldo,
+  motivo: MOTIVOS_ESTOQUE[m.motivo] ?? m.motivo,
+  pedido: m.pedido_id ? { id: m.pedido_id, codigo: formatarCodigo(m.pedido_codigo) } : null,
+  quem: m.usuario_nome ?? (m.motivo === 'pedido' ? 'Site' : '—')
+});
 
 function paraAdminDetalhe(p, loja) {
   return {
@@ -182,6 +227,7 @@ function paraAdminDetalhe(p, loja) {
     }),
     visivelNoSite: visivelNoSite(p),
     urlNoSite: `/produto/${p.slug}`,
+    estoque: estoqueDaPeca(p, loja),
     pendencias: pendenciasDaPeca(p, loja)
   };
 }
@@ -194,7 +240,44 @@ export async function listarProdutosAdmin(db) {
 export async function produtoAdmin(db, id) {
   const p = await repoProdutos.porId(db, id);
   if (!p) throw naoEncontrado('Peça');
-  return paraAdminDetalhe(p, await repoLoja.obter(db));
+  const [loja, movimentos] = await Promise.all([repoLoja.obter(db), repoEstoque.movimentos(db, id)]);
+  return { ...paraAdminDetalhe(p, loja), movimentosEstoque: movimentos.map(paraMovimento) };
+}
+
+/**
+ * Ajuste de estoque no painel. "anteriores" são os números que estavam na tela: se algum mudou
+ * enquanto a loja editava (entrou um pedido), nada é gravado — para não apagar a reserva sem querer.
+ */
+export async function salvarEstoque(pool, id, { controla, quantidades, anteriores = {} }, usuario) {
+  const resumo = await emTransacao(pool, async (db) => {
+    const p = await repoProdutos.porId(db, id);
+    if (!p) throw naoEncontrado('Peça');
+    const loja = await repoLoja.obter(db);
+
+    const desconhecidos = Object.keys(quantidades).filter((t) => !loja.tamanhos.includes(t));
+    if (desconhecidos.length) throw camposInvalidos({ quantidades: `Tamanho que a loja não vende: ${desconhecidos.join(', ')}.` });
+
+    const atuais = await repoEstoque.travarDaPeca(db, id);
+    const mudaram = loja.tamanhos.filter((t) => t in anteriores && anteriores[t] !== (atuais[t] ?? 0));
+    if (mudaram.length) {
+      throw new ErroHttp(409, `O estoque de ${mudaram.join(', ')} mudou enquanto você editava (entrou ou saiu um pedido). Confira os números e salve de novo.`);
+    }
+
+    const mudancas = [];
+    for (const tamanho of loja.tamanhos) {
+      if (!(tamanho in quantidades)) continue;
+      const de = atuais[tamanho] ?? 0;
+      const para = quantidades[tamanho];
+      await repoEstoque.ajustar(db, { produtoId: id, tamanho, de, para, usuarioId: usuario?.id ?? null });
+      if (de !== para) mudancas.push(`${tamanho} ${de}→${para}`);
+    }
+    if (controla !== p.controla_estoque) {
+      await repoEstoque.definirControle(db, id, controla);
+      mudancas.unshift(controla ? 'passou a controlar' : 'deixou de controlar');
+    }
+    return { nome: p.nome, cor: p.cor, mudancas };
+  });
+  return { produto: await produtoAdmin(pool, id), resumo };
 }
 
 /** Primeiro candidato livre; se todos estiverem em uso, acrescenta -2, -3... */
@@ -354,6 +437,8 @@ export async function resumoAdmin(db, { siteUrl, producao }) {
   const pedidosNovos = pedidosPorStatus.novo ?? 0;
 
   if (pedidosNovos) avisar(`${plural(pedidosNovos, 'pedido aguardando', 'pedidos aguardando')} pagamento.`, '/admin/pedidos?status=novo');
+  const comEsgotado = produtos.filter((p) => p.ativo && tamanhosEsgotados(p, loja).length).length;
+  if (comEsgotado) avisar(`${plural(comEsgotado, 'peça tem', 'peças têm')} tamanho esgotado. Reponha o estoque ou confira.`, '/admin/produtos');
 
   if (!loja.whatsapp_numero) avisar('Cadastre o WhatsApp que recebe os pedidos.', '/admin/loja');
   const semPreco = produtos.filter((p) => precoDoProduto(p, loja) == null).length;

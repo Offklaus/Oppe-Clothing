@@ -22,6 +22,11 @@
   background: var(--preto); color: var(--cru); padding: 6px 10px;
   font-family: var(--f-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.12em;
 }
+.card__esgotado {
+  position: absolute; left: 12px; bottom: 12px;
+  background: var(--vinho); color: var(--cru); padding: 6px 10px;
+  font-family: var(--f-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.14em;
+}
 .card__info {
   display: grid; grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas: "name price" "meta meta";

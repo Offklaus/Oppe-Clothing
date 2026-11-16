@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { useSacola } from '../context/SacolaContext.jsx';
-import { buscarProduto } from '../api/client.js';
+import { buscarProduto, LINK_CONTATO_WHATSAPP } from '../api/client.js';
 import { useDados } from '../hooks/useDados.js';
 import Estrela from '../components/ui/Estrela.jsx';
 import Galeria from '../components/produto/Galeria.jsx';
@@ -77,6 +77,7 @@ function DetalheProduto({ produto }) {
 
           <SeletorTamanho
             tamanhos={produto.tamanhos}
+            esgotados={produto.tamanhosEsgotados}
             valor={tamanho}
             onEscolher={escolher}
             erro={erroTamanho}
@@ -84,24 +85,32 @@ function DetalheProduto({ produto }) {
             onVerMedidas={produto.medidas ? () => setMedidasAbertas(true) : undefined}
           />
 
-          <div className="produto__acoes">
-            <button
-              type="button"
-              className="btn btn--dark btn--xl btn--block"
-              // garante a peça sem somar outra unidade; o formulário mostra tudo o que vai no pedido
-              onClick={() => { if (exigirTamanho()) { garantir(produto.id, tamanho); abrir('dados'); } }}
-            >
-              <Estrela tamanho={16} cor="#E01E14" />
-              Comprar agora
-            </button>
-            <button
-              type="button"
-              className="btn btn--lg btn--block"
-              onClick={() => { if (exigirTamanho()) { adicionar(produto.id, tamanho); abrir('sacola'); } }}
-            >
-              Adicionar à sacola
-            </button>
-          </div>
+          {produto.esgotado ? (
+            <div className="produto__esgotado" role="status">
+              <strong>Esgotado</strong>
+              <span>Todos os tamanhos acabaram. Fale com a gente para saber da reposição.</span>
+              <a className="btn btn--lg btn--block" href={LINK_CONTATO_WHATSAPP} target="_blank" rel="noopener">Avisar pelo WhatsApp</a>
+            </div>
+          ) : (
+            <div className="produto__acoes">
+              <button
+                type="button"
+                className="btn btn--dark btn--xl btn--block"
+                // garante a peça sem somar outra unidade; o formulário mostra tudo o que vai no pedido
+                onClick={() => { if (exigirTamanho()) { garantir(produto.id, tamanho); abrir('dados'); } }}
+              >
+                <Estrela tamanho={16} cor="#E01E14" />
+                Comprar agora
+              </button>
+              <button
+                type="button"
+                className="btn btn--lg btn--block"
+                onClick={() => { if (exigirTamanho()) { adicionar(produto.id, tamanho); abrir('sacola'); } }}
+              >
+                Adicionar à sacola
+              </button>
+            </div>
+          )}
 
           <FichaTecnica ficha={produto.ficha} />
         </div>

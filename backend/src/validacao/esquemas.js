@@ -140,6 +140,20 @@ export const esquemaNovoPedido = z.strictObject({
   cliente: esquemaCliente
 });
 
+const quantidadeEstoque = z.number({ error: 'Quantidade: use um número inteiro.' })
+  .int('Quantidade: use um número inteiro.').min(0, 'Quantidade não pode ser negativa.').max(99999, 'Quantidade: no máximo 99999.');
+const porTamanho = z.record(z.string().trim().min(1).max(8), quantidadeEstoque, { error: 'Quantidades inválidas.' });
+
+/**
+ * Ajuste de estoque no painel: quantidade de cada tamanho e os números que estavam na tela
+ * (se mudaram nesse meio-tempo, o servidor não grava).
+ */
+export const esquemaEstoque = z.strictObject({
+  controla: z.boolean({ error: 'Informe se a peça controla estoque.' }),
+  quantidades: porTamanho,
+  anteriores: porTamanho.optional()
+});
+
 /** Consulta pública: só o código. */
 export const esquemaConsulta = z.strictObject({
   codigo: z.string({ error: 'Informe o código do pedido.' }).trim().min(1, 'Informe o código do pedido.').max(40, 'Código inválido.')

@@ -15,6 +15,7 @@ export default function ProdutoCard({ produto }) {
         />
         <img className="card__img card__img--b" src={verso.img} alt="" width="1000" height="1000" loading="lazy" decoding="async" />
         {produto.tag && <span className="card__tag">✦ {produto.tag}</span>}
+        {produto.esgotado && <span className="card__esgotado">ESGOTADO</span>}
       </div>
       <div className="card__info">
         <span className="card__name">{produto.nome}</span>

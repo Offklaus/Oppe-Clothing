@@ -21,6 +21,7 @@ export default function Produtos() {
                 <th scope="col">Peça</th>
                 <th scope="col" className="adm-ocultar-celular">Coleção</th>
                 <th scope="col">Preço</th>
+                <th scope="col" className="adm-ocultar-celular">Estoque</th>
                 <th scope="col">Situação</th>
                 <th scope="col"><span className="visually-hidden">Ações</span></th>
               </tr>
@@ -36,6 +37,7 @@ export default function Produtos() {
                   <td className="adm-tabela__nome">{p.nome}<small>{p.cor}</small></td>
                   <td className="adm-ocultar-celular">{p.colecao}</td>
                   <td>{p.precoTexto}{p.usaPrecoPadrao && <small className="adm-campo__ajuda"> (padrão)</small>}</td>
+                  <td className="adm-ocultar-celular adm-estoque__lista">{p.estoqueTexto}</td>
                   <td>
                     <div className="adm-selos">
                       {p.visivelNoSite

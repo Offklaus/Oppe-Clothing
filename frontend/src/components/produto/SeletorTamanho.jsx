@@ -1,6 +1,10 @@
-/** Botões de tamanho. `erro` destaca o grupo quando o cliente tenta pedir sem escolher. */
-export default function SeletorTamanho({ tamanhos, valor, onEscolher, erro, refPrimeiro, onVerMedidas }) {
+/**
+ * Botões de tamanho. `erro` destaca o grupo quando o cliente tenta pedir sem escolher.
+ * `esgotados` (vem do servidor) aparecem riscados e não dá para escolher.
+ */
+export default function SeletorTamanho({ tamanhos, esgotados = [], valor, onEscolher, erro, refPrimeiro, onVerMedidas }) {
   const status = erro ? 'Escolha um tamanho antes de pedir' : valor ? `Escolhido: ${valor}` : 'Escolha um tamanho';
+  const primeiroDisponivel = tamanhos.find((t) => !esgotados.includes(t));
 
   return (
     <div className="tamanho">
@@ -9,18 +13,24 @@ export default function SeletorTamanho({ tamanhos, valor, onEscolher, erro, refP
         <span className={`tamanho__status${erro ? ' is-erro' : ''}`} aria-live="polite">{status}</span>
       </div>
       <div className={`sizes${erro ? ' is-erro' : ''}`} role="group" aria-labelledby="tamanho-label">
-        {tamanhos.map((t, i) => (
-          <button
-            key={t}
-            ref={i === 0 ? refPrimeiro : undefined}
-            type="button"
-            className="size"
-            aria-pressed={t === valor}
-            onClick={() => onEscolher(t)}
-          >
-            {t}
-          </button>
-        ))}
+        {tamanhos.map((t) => {
+          const esgotado = esgotados.includes(t);
+          return (
+            <button
+              key={t}
+              ref={t === primeiroDisponivel ? refPrimeiro : undefined}
+              type="button"
+              className={`size${esgotado ? ' is-esgotado' : ''}`}
+              aria-pressed={t === valor}
+              aria-label={esgotado ? `${t}, esgotado` : undefined}
+              title={esgotado ? 'Esgotado' : undefined}
+              disabled={esgotado}
+              onClick={() => onEscolher(t)}
+            >
+              {t}
+            </button>
+          );
+        })}
       </div>
       {onVerMedidas && (
         <button type="button" className="link-btn" onClick={onVerMedidas}>Ver tabela de medidas</button>

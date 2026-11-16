@@ -57,6 +57,9 @@ export const TELEFONE_BR = /^55[1-9]{2}9?[0-9]{8}$/;
 export const UFS = Object.freeze(['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA',
   'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO']);
 
+/** Código do pedido: "K7Q2MX9P" → "K7Q2-MX9P" (mais fácil de ler e ditar). */
+export const formatarCodigo = (codigo) => (codigo?.length === 8 ? `${codigo.slice(0, 4)}-${codigo.slice(4)}` : codigo ?? '');
+
 /** "37500000" → "37500-000". */
 export const formatarCep = (cep) => (cep?.length === 8 ? `${cep.slice(0, 5)}-${cep.slice(5)}` : cep ?? '');
 

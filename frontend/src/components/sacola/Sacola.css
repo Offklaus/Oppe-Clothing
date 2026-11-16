@@ -54,6 +54,11 @@
   text-decoration: underline; text-underline-offset: 3px;
 }
 
+.bag__ajustes {
+  margin-top: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px;
+  border-left: 4px solid var(--vinho); background: rgba(142, 27, 30, 0.08); color: var(--vinho); font-size: 14px; font-weight: 700;
+}
+
 /* ---------- Pedidos: atalho para acompanhar e último pedido ---------- */
 .bag__track {
   display: flex; justify-content: space-between; align-items: center; gap: 12px;

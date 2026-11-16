@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { api, useCarregar } from '../api.js';
 import Campo, { Alerta, Cabecalho, Marcar } from '../componentes/Campo.jsx';
 import FotoProduto from '../componentes/FotoProduto.jsx';
+import EstoqueProduto from '../componentes/EstoqueProduto.jsx';
 
 const VAZIO = {
   nome: '', cor: '', descricaoCor: '', colecaoId: '', tag: '', preco: '',
@@ -143,6 +144,8 @@ export default function ProdutoForm() {
           {editando && produto && <button type="button" className="btn btn--perigo btn--lg" onClick={excluir}>Excluir peça</button>}
         </div>
       </form>
+
+      {editando && produto && <EstoqueProduto key={produto.id} produto={produto} onAtualizado={setProduto} />}
 
       {editando && produto && (
         <section className="adm-bloco" aria-labelledby="fotos-titulo">

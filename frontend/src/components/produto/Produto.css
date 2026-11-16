@@ -51,6 +51,17 @@
 .size:hover { background: var(--concreto); }
 .size[aria-pressed="true"] { background: var(--preto); color: var(--cru); }
 .sizes.is-erro .size { border-color: var(--vinho); }
+/* tamanho esgotado: riscado e sem clique */
+.size.is-esgotado, .size.is-esgotado:hover {
+  cursor: not-allowed; background: transparent; color: var(--pedra); border-color: var(--concreto);
+  text-decoration: line-through; text-decoration-thickness: 2px;
+}
+.produto__esgotado {
+  display: flex; flex-direction: column; gap: 10px; padding: 18px;
+  border: 1.5px solid var(--preto); background: var(--concreto-claro);
+}
+.produto__esgotado strong { font-family: var(--f-display); font-weight: 400; font-size: 32px; line-height: 1; text-transform: uppercase; color: var(--vinho); }
+.produto__esgotado span { font-size: 15px; color: var(--grafite); }
 .link-btn {
   align-self: flex-start; padding: 10px 0; border: 0; background: none; cursor: pointer;
   font-size: 14px; color: var(--preto); text-decoration: underline; text-underline-offset: 3px;
