@@ -15,7 +15,6 @@ import Pedidos from './paginas/Pedidos.jsx';
 import PedidoDetalhe from './paginas/PedidoDetalhe.jsx';
 import './admin.css';
 
-/** Painel em /admin. Carregado sob demanda: o código do painel não vai para quem só visita o site. */
 export default function AdminApp() {
   useEffect(() => {
     document.title = 'Painel — Oppe Clothing';

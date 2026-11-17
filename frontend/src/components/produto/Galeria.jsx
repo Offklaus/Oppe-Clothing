@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import Selo from '../ui/Selo.jsx';
 
-/** Foto grande da peça com miniaturas dos lados (a lista vem pronta do servidor). */
 export default function Galeria({ produto }) {
   const [vista, setVista] = useState(0);
   const fotos = produto.galeria;

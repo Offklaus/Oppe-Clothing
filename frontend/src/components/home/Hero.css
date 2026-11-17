@@ -19,7 +19,6 @@
 .hero__text { grid-area: text; max-width: 460px; font-size: 17px; line-height: 1.55; color: var(--grafite); }
 .hero__cta { grid-area: cta; display: flex; flex-wrap: wrap; gap: 12px; }
 
-/* o varal precisa de ~560px de largura para caber o painel em uma linha */
 @media (max-width: 1119px) {
   .hero {
     grid-template-columns: minmax(0, 1fr);

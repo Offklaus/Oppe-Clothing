@@ -7,17 +7,12 @@ const diaMes = (iso) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digi
 const dataCompleta = (iso) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
 const LEITOR = { feita: 'concluída', atual: 'etapa atual', pendente: 'ainda não começou' };
 
-/**
- * Acompanhar pedido: o cliente digita o código (ou chega pelo link da mensagem, ?codigo=...)
- * e vê o andamento. Sem login: o código é a chave, e a resposta não traz dados pessoais.
- */
 export default function AcompanharPage() {
   const [params, setParams] = useSearchParams();
   const codigoNaUrl = params.get('codigo') ?? '';
   const [texto, setTexto] = useState(codigoNaUrl);
   const [estado, setEstado] = useState({ carregando: false, pedido: null, erro: '' });
   const refResultado = useRef(null);
-  // só a consulta mais recente pode mudar a tela (uma resposta lenta e antiga não sobrescreve a nova)
   const ultimaConsulta = useRef(0);
 
   useEffect(() => { document.title = 'Acompanhar pedido — Oppe Clothing'; }, []);
@@ -33,8 +28,6 @@ export default function AcompanharPage() {
     }
   }, []);
 
-  // A URL manda: chegar pelo link da mensagem (…/acompanhar?codigo=…), pelo "Acompanhar" da gaveta
-  // ou trocar o código estando já nesta página consulta de novo.
   useEffect(() => {
     setTexto(codigoNaUrl);
     if (codigoNaUrl) consultar(codigoNaUrl);
@@ -54,7 +47,6 @@ export default function AcompanharPage() {
       setEstado({ carregando: false, pedido: null, erro: 'Digite o código do pedido.' });
       return;
     }
-    // mesmo código: consulta de novo (a URL não muda); outro código: a URL muda e o efeito acima consulta
     if (codigo === codigoNaUrl) consultar(codigo);
     else setParams({ codigo }, { replace: true });
   }

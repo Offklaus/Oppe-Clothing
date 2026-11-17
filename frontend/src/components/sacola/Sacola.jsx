@@ -10,19 +10,12 @@ import './Sacola.css';
 
 const TITULOS = { sacola: 'Pedidos', dados: 'Finalizar pedido', criado: 'Pedido criado' };
 
-/**
- * Gaveta "Pedidos": a sacola, o atalho para acompanhar um pedido e o passo a passo para finalizar.
- * 1. sacola → 2. dados de entrega (o servidor registra o pedido e gera o código) → 3. código + WhatsApp.
- * O servidor confere a sacola a cada mudança: junta repetidos, tira o que não existe mais e calcula os valores.
- */
 export default function Sacola() {
   const {
     itens, aberta, fechar, etapa, setEtapa, alterarQtd, remover, esvaziar, substituir, ultimoPedido, registrarPedido
   } = useSacola();
   const [previa, setPrevia] = useState(null);
   const [falhou, setFalhou] = useState(false);
-  // o que o servidor ajustou na sacola (esgotou, quantidade reduzida). Fica visível até a gaveta fechar,
-  // porque a conferência seguinte (já com a sacola corrigida) não traz mais o aviso.
   const [ajustes, setAjustes] = useState([]);
   const refFechar = useRef(null);
   const chave = JSON.stringify(itens);
@@ -46,17 +39,15 @@ export default function Sacola() {
       })
       .catch((e) => { if (e.name !== 'AbortError') setFalhou(true); });
     return () => controle.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aberta, chave]);
 
   useEffect(() => { if (!aberta) setAjustes([]); }, [aberta]);
 
-  // sem peças não há o que finalizar
   useEffect(() => { if (etapa === 'dados' && vazia) setEtapa('sacola'); }, [etapa, vazia, setEtapa]);
 
-  const tirar = (indice) => { remover(indice); refFechar.current?.focus(); };
+  const mexer = (acao) => { setAjustes([]); acao(); };
+  const tirar = (indice) => { mexer(() => remover(indice)); refFechar.current?.focus(); };
 
-  /** O servidor registrou o pedido: a sacola esvazia e o cliente vê o código. */
   const pedidoCriado = (pedido) => {
     registrarPedido(pedido);
     esvaziar();
@@ -121,8 +112,8 @@ export default function Sacola() {
                     <SacolaItem
                       key={`${item.id}-${item.tamanho}`}
                       item={item}
-                      onMais={() => alterarQtd(i, 1)}
-                      onMenos={() => (item.qtd > 1 ? alterarQtd(i, -1) : tirar(i))}
+                      onMais={() => mexer(() => alterarQtd(i, 1))}
+                      onMenos={() => (item.qtd > 1 ? mexer(() => alterarQtd(i, -1)) : tirar(i))}
                       onRemover={() => tirar(i)}
                       onAbrirPeca={fechar}
                     />
@@ -142,7 +133,7 @@ export default function Sacola() {
                   <Estrela tamanho={16} cor="#E01E14" />
                   Finalizar pedido
                 </button>
-                <button type="button" className="bag__clear" onClick={() => { esvaziar(); refFechar.current?.focus(); }}>
+                <button type="button" className="bag__clear" onClick={() => { mexer(esvaziar); refFechar.current?.focus(); }}>
                   Esvaziar sacola
                 </button>
               </div>
@@ -154,7 +145,6 @@ export default function Sacola() {
   );
 }
 
-/** Passo 3: o pedido já está registrado; o cliente guarda o código e envia a mensagem pronta. */
 function PedidoCriado({ pedido, onFechar }) {
   return (
     <div className="bag__body bag__criado" role="status">

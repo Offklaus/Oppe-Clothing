@@ -5,18 +5,13 @@ import './Varal.css';
 
 const encaixar = (a) => Math.round(a / 180) * 180;
 
-// transição da rotação da peça ativa em cada modo
 const TRANSICAO = {
-  parado: undefined, // usa a do CSS
+  parado: undefined,
   arrastando: 'none',
   trocando: 'none',
   girando: 'transform 1.4s cubic-bezier(0.45, 0, 0.2, 1)'
 };
 
-/**
- * O varal: as peças penduradas balançam; a do centro é grande e gira em 3D
- * (arrastar, "ver frente/costas" ou "girar 360°").
- */
 export default function Varal({ produtos, destaqueId }) {
   const n = produtos.length;
   const [idx, setIdx] = useState(() => Math.max(0, produtos.findIndex((p) => p.id === destaqueId)));
@@ -28,7 +23,6 @@ export default function Varal({ produtos, destaqueId }) {
   const raiz = useRef(null);
   const arraste = useRef(null);
 
-  // as medidas vêm das variáveis CSS (--v-small, --v-active, --v-gap), que mudam no celular
   const medir = useCallback(() => {
     const el = raiz.current;
     if (!el) return;
@@ -58,7 +52,7 @@ export default function Varal({ produtos, destaqueId }) {
     setAngulo(0);
     setModo('trocando');
     const p = produtos[novo];
-    setAnuncio(`${p.nome}, ${p.cor}. Peça ${novo + 1} de ${n}.`);
+    setAnuncio(`${p.nome}, ${p.cor}${p.esgotado ? ', esgotada' : ''}. Peça ${novo + 1} de ${n}.`);
   };
   const virar = () => { setModo('parado'); setAngulo((a) => encaixar(a) + 180); };
   const girar = () => { setModo('girando'); setAngulo((a) => encaixar(a) + 360); };
@@ -66,7 +60,7 @@ export default function Varal({ produtos, destaqueId }) {
   const aoPressionar = (e) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     arraste.current = { x: e.clientX, a: angulo };
-    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* sem captura */ }
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { }
     setModo('arrastando');
   };
   const aoMover = (e) => {
@@ -148,6 +142,7 @@ export default function Varal({ produtos, destaqueId }) {
         <div className="varal__info">
           <span className="varal__meta">{atual.colecao.toUpperCase()} ✦ VENDO: {atual.faces[lado].lado.toUpperCase()}</span>
           <span className="varal__name">{atual.nome}</span>
+          {atual.esgotado && <span className="varal__esgotado">ESGOTADO</span>}
           <div className="varal__row">
             <span className="varal__color">{atual.cor} · {atual.precoTexto}</span>
             <Link className="varal__link" to={`/produto/${atual.id}`} aria-label={`Ver a peça ${atual.nome}, ${atual.cor}`}>

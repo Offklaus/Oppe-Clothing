@@ -1,4 +1,3 @@
-// Login, usuários do painel e senhas.
 import * as repoUsuarios from '../repos/usuarios.js';
 import { ErroHttp, naoEncontrado, validar } from '../erros.js';
 import { esquemaUsuarioNovo } from '../validacao/esquemas.js';
@@ -8,8 +7,6 @@ import { encerrarSessoesDoUsuario } from '../seguranca/sessao.js';
 export const MAX_FALHAS = 5;
 export const BLOQUEIO_MINUTOS = 15;
 
-// Mesma mensagem para e-mail inexistente, senha errada, conta inativa ou bloqueada:
-// assim ninguém descobre quais e-mails existem.
 const falhaDeLogin = () => new ErroHttp(
   401, `E-mail ou senha incorretos. Após ${MAX_FALHAS} tentativas erradas, o acesso fica bloqueado por ${BLOQUEIO_MINUTOS} minutos.`
 );
@@ -30,7 +27,6 @@ export async function autenticar(db, { email, senha }) {
     throw falhaDeLogin();
   }
   await repoUsuarios.registrarSucesso(db, usuario.id);
-  // se os parâmetros do Argon2 mudarem, o hash é atualizado no próximo login
   if (precisaRehash(usuario.senha_hash)) await repoUsuarios.definirSenha(db, usuario.id, await gerarHash(senha));
   return { id: usuario.id, nome: usuario.nome, email: usuario.email };
 }
@@ -91,7 +87,6 @@ export async function trocarPropriaSenha(db, ator, { senhaAtual, novaSenha }) {
   }
   exigirSenhaForte(novaSenha, ator.email, 'novaSenha');
   await repoUsuarios.definirSenha(db, ator.id, await gerarHash(novaSenha));
-  // derruba as sessões em outros aparelhos; a atual continua
   await encerrarSessoesDoUsuario(db, ator.id, { exceto: ator.sessaoId });
 }
 

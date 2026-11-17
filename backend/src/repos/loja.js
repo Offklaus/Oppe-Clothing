@@ -1,4 +1,3 @@
-// Configurações da loja: uma única linha (id = true).
 export async function obter(db) {
   const { rows } = await db.query('SELECT * FROM configuracoes_loja WHERE id');
   if (!rows[0]) throw new Error('Configurações da loja ausentes: rode npm run db:preparar.');

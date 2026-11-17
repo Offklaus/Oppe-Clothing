@@ -52,7 +52,6 @@ test('detalhe da peça traz ficha, tamanhos e relacionados da mesma coleção pr
   assert.equal((await fetch(`${srv.base}/api/produtos/nao-existe`)).status, 404);
 });
 
-/** Muda o preço de uma peça só durante o teste (volta ao original mesmo se o teste falhar). */
 async function precoDuranteOTeste(t, slug, centavos) {
   await pool.query('UPDATE produtos SET preco_centavos = $2 WHERE slug = $1', [slug, centavos]);
   t.after(() => pool.query('UPDATE produtos SET preco_centavos = NULL WHERE slug = $1', [slug]));
@@ -141,7 +140,6 @@ test('repetir a chave com outros dados não devolve o pedido (nem a mensagem) de
     assert.equal(corpo.whatsappUrl, undefined);
     assert.ok(!JSON.stringify(corpo).includes('Maria'));
   }
-  // o mesmo cliente repetindo (ex.: nova tentativa após falha de rede) recebe o mesmo pedido
   const repetido = await fazerPedido(srv.base, [{ id: 'drip', tamanho: 'G', qtd: 1 }], { chave });
   assert.equal(repetido.status, 200);
   assert.equal((await repetido.json()).codigo, (await original.json()).codigo);

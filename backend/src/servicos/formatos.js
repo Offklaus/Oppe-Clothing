@@ -1,7 +1,7 @@
-// Conversões e formatos usados pelas regras de negócio.
 import { ErroHttp } from '../erros.js';
 
 export const LIMITE_QTD = 99;
+export const ESTOQUE_MAXIMO = 99999;
 export const SEM_PRECO = 'Sob consulta';
 
 const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -11,7 +11,6 @@ export const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
 
 const PRECO_MAXIMO = 100_000;
 
-/** Aceita 129.9, "129,90", "R$ 1.299,90" ou vazio (sem preço). Devolve centavos ou null. */
 export function paraCentavos(valor, campo = 'preco') {
   if (valor == null || (typeof valor === 'string' && valor.trim() === '')) return null;
   const invalido = () => new ErroHttp(400, 'Confira os campos destacados.', {
@@ -30,7 +29,6 @@ export function paraCentavos(valor, campo = 'preco') {
   return Math.round(numero * 100);
 }
 
-/** Centavos para o campo do formulário: 12990 → "129,90". */
 export const centavosParaCampo = (c) => (c == null ? '' : (c / 100).toFixed(2).replace('.', ','));
 
 export function gerarSlug(texto) {
@@ -41,29 +39,20 @@ export function gerarSlug(texto) {
   return slug || 'item';
 }
 
-/**
- * Só os números do telefone; com 10 ou 11 dígitos (DDD + número) ganha o 55 do Brasil.
- * "(35) 99765-3327", "35997653327" e "+55 35 99765-3327" → "5535997653327".
- */
 export function telefoneComPais(valor) {
   const digitos = String(valor ?? '').replace(/\D/g, '');
   return digitos.length === 10 || digitos.length === 11 ? `55${digitos}` : digitos;
 }
 
-/** Celular ou fixo brasileiro já com o 55: DDD (sem zero) + 8 dígitos, com ou sem o 9 na frente. */
 export const TELEFONE_BR = /^55[1-9]{2}9?[0-9]{8}$/;
 
-/** Estados aceitos no endereço de entrega (o site recebe esta lista da API). */
 export const UFS = Object.freeze(['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA',
   'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO']);
 
-/** Código do pedido: "K7Q2MX9P" → "K7Q2-MX9P" (mais fácil de ler e ditar). */
 export const formatarCodigo = (codigo) => (codigo?.length === 8 ? `${codigo.slice(0, 4)}-${codigo.slice(4)}` : codigo ?? '');
 
-/** "37500000" → "37500-000". */
 export const formatarCep = (cep) => (cep?.length === 8 ? `${cep.slice(0, 5)}-${cep.slice(5)}` : cep ?? '');
 
-/** WhatsApp da loja: aceita também números de fora do Brasil (12 a 15 dígitos). */
 export function normalizarWhatsapp(valor) {
   const numero = telefoneComPais(valor);
   if (!numero) return '';
@@ -79,7 +68,6 @@ export function formatarWhatsapp(numero) {
   return m ? `(${m[1]}) ${m[2]}-${m[3]}` : `+${numero}`;
 }
 
-/** Aceita "@usuario", "usuario" ou o link do perfil. Devolve só o usuário, em minúsculas. */
 export function normalizarInstagram(valor) {
   let s = String(valor ?? '').trim();
   if (!s) return '';
@@ -94,5 +82,4 @@ export function normalizarInstagram(valor) {
 
 export const linkWhatsapp = (numero, texto) => `https://wa.me/${numero ?? ''}?text=${encodeURIComponent(texto)}`;
 
-/** Texto com marcador de "preencher depois", como [PREÇO] ou [CM]. */
 export const temMarcador = (texto) => /\[[^\]]+\]/.test(String(texto ?? ''));

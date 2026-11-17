@@ -1,4 +1,3 @@
-/** Modelagem, malha, estampa e cuidados, montados pelo servidor. */
 export default function FichaTecnica({ ficha }) {
   if (!ficha?.length) return null;
   return (

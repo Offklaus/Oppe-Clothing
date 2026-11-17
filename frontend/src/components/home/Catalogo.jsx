@@ -7,7 +7,6 @@ import './Catalogo.css';
 
 const SO_TODAS = [{ slug: '', nome: 'Todas' }];
 
-/** Grade de peças. O filtro (?colecao=faith) é aplicado pelo servidor. */
 export default function Catalogo() {
   const { loja } = useLoja();
   const [params, setParams] = useSearchParams();

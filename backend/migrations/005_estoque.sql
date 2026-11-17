@@ -1,9 +1,3 @@
--- Controle de estoque por tamanho.
---   * Cada peça escolhe se controla estoque. As que já existem começam SEM controle (vendem como antes),
---     até a loja ligar e informar as quantidades no painel.
---   * O pedido retira as peças do estoque ao ser criado; cancelar devolve; reativar retira de novo.
---   * Toda entrada e saída fica registrada (motivo, pedido, quem fez), para conferência.
-
 ALTER TABLE produtos ADD COLUMN controla_estoque boolean NOT NULL DEFAULT false;
 
 CREATE TABLE estoque (
@@ -13,7 +7,6 @@ CREATE TABLE estoque (
   PRIMARY KEY (produto_id, tamanho)
 );
 
--- a peça deste pedido saiu do estoque? (é o que volta se o pedido for cancelado)
 ALTER TABLE pedido_itens ADD COLUMN reservado boolean NOT NULL DEFAULT false;
 
 CREATE TABLE estoque_movimentos (
@@ -29,7 +22,6 @@ CREATE TABLE estoque_movimentos (
 );
 CREATE INDEX estoque_movimentos_produto_idx ON estoque_movimentos (produto_id, criado_em DESC, id DESC);
 
--- mesma regra da 002: a Data API do Supabase (anon/authenticated) não lê nem grava
 ALTER TABLE estoque            ENABLE ROW LEVEL SECURITY;
 ALTER TABLE estoque_movimentos ENABLE ROW LEVEL SECURITY;
 

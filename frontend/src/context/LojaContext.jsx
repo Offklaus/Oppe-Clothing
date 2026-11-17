@@ -3,7 +3,6 @@ import { buscarLoja, buscarProdutos } from '../api/client.js';
 
 const LojaContext = createContext(null);
 
-/** Dados públicos da loja e as peças do varal, carregados uma vez. */
 export function LojaProvider({ children }) {
   const [estado, setEstado] = useState({ status: 'carregando', loja: null, produtos: [] });
 

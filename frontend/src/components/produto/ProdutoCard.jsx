@@ -1,6 +1,5 @@
 import { Link } from 'react-router';
 
-/** Card da peça: mostra um lado e, ao passar o mouse, o outro. */
 export default function ProdutoCard({ produto }) {
   const [frente, verso] = produto.faces;
 

@@ -1,9 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 
-/**
- * Busca dados da API e cancela a busca anterior quando as dependências mudam.
- * Enquanto carrega de novo, mantém os dados anteriores na tela (sem piscar).
- */
 export function useDados(buscar, dependencias) {
   const [estado, setEstado] = useState({ status: 'carregando', dados: null, erro: null });
   const [versao, setVersao] = useState(0);
@@ -17,7 +13,6 @@ export function useDados(buscar, dependencias) {
         if (erro.name !== 'AbortError') setEstado({ status: 'erro', dados: null, erro });
       });
     return () => controle.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...dependencias, versao]);
 
   const recarregar = useCallback(() => setVersao((v) => v + 1), []);

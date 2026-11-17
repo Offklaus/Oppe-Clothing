@@ -11,18 +11,14 @@ import AcompanharPage from '../../pages/AcompanharPage.jsx';
 import PrivacidadePage from '../../pages/PrivacidadePage.jsx';
 import NaoEncontrado from '../../pages/NaoEncontrado.jsx';
 
-/** Ao trocar de página (sem âncora), volta para o topo. */
 function RolarAoTopo() {
   const { pathname, hash } = useLocation();
   useEffect(() => {
     if (!hash) window.scrollTo(0, 0);
-    // só reage à troca de página
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
   return null;
 }
 
-/** O site da loja: cabeçalho, páginas, rodapé e sacola. */
 export default function SitePublico() {
   const { pathname } = useLocation();
   const emProduto = pathname.startsWith('/produto/');

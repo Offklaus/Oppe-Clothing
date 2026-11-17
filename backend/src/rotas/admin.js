@@ -1,5 +1,3 @@
-// Rotas do painel. Tudo, exceto o login, exige sessão válida.
-// Toda alteração passa por: proteção CSRF → sessão → validação (zod) → regra no serviço → auditoria.
 import { Router } from 'express';
 import multer from 'multer';
 import { validar } from '../erros.js';
@@ -39,7 +37,8 @@ const DESCRICOES = {
   pedido_editado: (d) => {
     const partes = [d.status, d.entrega && 'dados de entrega'].filter(Boolean);
     return `atualizou o pedido #${d.codigo}${partes.length ? ` (${partes.join(', ')})` : ''}`;
-  }
+  },
+  dados_cliente_apagados: (d) => `apagou os dados do cliente do pedido #${d.codigo}`
 };
 
 export function rotasAdmin({ pool, config, limiteLogin = 10 }) {
@@ -54,19 +53,17 @@ export function rotasAdmin({ pool, config, limiteLogin = 10 }) {
   const limiteLogin15min = limitador({ janelaMs: 15 * 60_000, limite: limiteLogin, mensagem: 'Muitas tentativas. Aguarde 15 minutos e tente de novo.' });
   const limiteSenha = limitador({ janelaMs: 15 * 60_000, limite: Math.max(limiteLogin, 10), mensagem: 'Muitas tentativas. Aguarde 15 minutos.' });
 
-  // ---------- sessão ----------
   r.post('/login', limiteLogin15min, async (req, res) => {
     const dados = validar(esquemas.esquemaLogin, req.body);
     let usuario;
     try {
       usuario = await auth.autenticar(pool, dados);
     } catch (erro) {
-      // só grava o texto se tiver formato de e-mail: quem digita a senha no campo errado não a deixa no registro
       const detalhe = esquemas.pareceEmail(dados.email) ? { email: dados.email } : { formatoInvalido: true };
       if (erro.status === 401) await registrar(req, 'login_falhou', 'sessao', null, detalhe, null);
       throw erro;
     }
-    await encerrarSessao(pool, req.cookies?.[COOKIE_SESSAO]); // nova sessão a cada login
+    await encerrarSessao(pool, req.cookies?.[COOKIE_SESSAO]);
     const token = await criarSessao(pool, usuario.id, { ip: req.ip, userAgent: req.get('user-agent') });
     res.cookie(COOKIE_SESSAO, token, opcoesCookie(config.cookieSeguro));
     await registrar(req, 'login', 'sessao', null, null, usuario);
@@ -85,15 +82,13 @@ export function rotasAdmin({ pool, config, limiteLogin = 10 }) {
     res.json({ usuario: { id: req.admin.id, nome: req.admin.nome, email: req.admin.email } });
   });
 
-  // ---------- daqui para baixo, só logado ----------
   r.use(exigirAdmin);
 
   r.get('/resumo', async (req, res) => res.json(await catalogo.resumoAdmin(pool, config)));
 
-  // ---------- peças ----------
   r.get('/produtos', async (req, res) => res.json(await catalogo.listarProdutosAdmin(pool)));
 
-  r.get('/produtos/:id', async (req, res) => res.json(await catalogo.produtoAdmin(pool, idNumerico(req))));
+  r.get('/produtos/:id', async (req, res) => res.json(await catalogo.produtoAdmin(pool, idNumerico(req), { comMovimentos: true })));
 
   r.post('/produtos', async (req, res) => {
     const p = await catalogo.criarProduto(pool, validar(esquemas.esquemaProduto, req.body));
@@ -115,7 +110,6 @@ export function rotasAdmin({ pool, config, limiteLogin = 10 }) {
     res.status(204).end();
   });
 
-  // envia (multipart, campo "imagem") ou só troca o lado da foto
   r.put('/produtos/:id/imagens/:posicao', enviarImagem, async (req, res) => {
     const id = idNumerico(req);
     const posicao = validar(esquemas.posicaoImagem, req.params.posicao);
@@ -127,7 +121,6 @@ export function rotasAdmin({ pool, config, limiteLogin = 10 }) {
     res.json(p);
   });
 
-  // estoque por tamanho (ajuste manual); entradas e saídas ficam registradas
   r.put('/produtos/:id/estoque', async (req, res) => {
     const id = idNumerico(req);
     const { produto, resumo } = await catalogo.salvarEstoque(pool, id, validar(esquemas.esquemaEstoque, req.body), req.admin);
@@ -145,7 +138,6 @@ export function rotasAdmin({ pool, config, limiteLogin = 10 }) {
     res.json(p);
   });
 
-  // ---------- coleções ----------
   r.get('/colecoes', async (req, res) => res.json(await catalogo.listarColecoesAdmin(pool)));
 
   r.post('/colecoes', async (req, res) => {
@@ -167,7 +159,6 @@ export function rotasAdmin({ pool, config, limiteLogin = 10 }) {
     res.status(204).end();
   });
 
-  // ---------- pedidos ----------
   r.get('/pedidos', async (req, res) => {
     res.json(await pedidos.listarPedidosAdmin(pool, validar(esquemas.esquemaFiltroPedidos, req.query)));
   });
@@ -183,7 +174,12 @@ export function rotasAdmin({ pool, config, limiteLogin = 10 }) {
     res.json(p);
   });
 
-  // ---------- loja ----------
+  r.post('/pedidos/:id/apagar-dados', async (req, res) => {
+    const p = await pedidos.apagarDadosDoCliente(pool, idNumerico(req));
+    await registrar(req, 'dados_cliente_apagados', 'pedido', p.id, { codigo: p.codigo });
+    res.json(p);
+  });
+
   r.get('/loja', async (req, res) => res.json(await catalogo.lojaAdmin(pool)));
 
   r.put('/loja', async (req, res) => {
@@ -192,7 +188,6 @@ export function rotasAdmin({ pool, config, limiteLogin = 10 }) {
     res.json(loja);
   });
 
-  // ---------- admins ----------
   r.get('/usuarios', async (req, res) => res.json(await auth.listarUsuarios(pool, req.admin.id)));
 
   r.post('/usuarios', async (req, res) => {
@@ -220,7 +215,6 @@ export function rotasAdmin({ pool, config, limiteLogin = 10 }) {
     res.status(204).end();
   });
 
-  // ---------- atividade ----------
   r.get('/auditoria', async (req, res) => {
     const lista = await repoAuditoria.listar(pool, 150);
     res.json(lista.map((a) => ({

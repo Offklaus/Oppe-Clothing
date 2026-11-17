@@ -1,4 +1,3 @@
-// Carga inicial: se o banco estiver vazio, importa o catálogo de backend/seed/*.json.
 import { readFile } from 'node:fs/promises';
 import { emTransacao } from './pool.js';
 import { gerarSlug, normalizarInstagram, normalizarWhatsapp } from '../servicos/formatos.js';

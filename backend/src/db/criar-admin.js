@@ -1,6 +1,3 @@
-// npm run admin:criar — cadastra um administrador do painel.
-// Pergunta e-mail, nome e senha (a senha não aparece na tela).
-// Também aceita ADMIN_EMAIL, ADMIN_NOME e ADMIN_SENHA no ambiente.
 import { createInterface } from 'node:readline/promises';
 import { config } from '../config.js';
 import { criarPool } from './pool.js';

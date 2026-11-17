@@ -1,6 +1,5 @@
 import { useId } from 'react';
 
-/** Campo com rótulo, ajuda e a mensagem de erro que veio do servidor. */
 export default function Campo({ rotulo, erro, ajuda, tipo = 'text', multilinha = false, opcoes, className = '', ...props }) {
   const id = useId();
   const idAjuda = `${id}-ajuda`;

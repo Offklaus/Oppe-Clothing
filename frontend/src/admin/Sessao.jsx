@@ -3,7 +3,6 @@ import { api } from './api.js';
 
 const SessaoContext = createContext(null);
 
-/** Quem está logado no painel. Quem decide se a sessão vale é sempre o servidor. */
 export function SessaoProvider({ children }) {
   const [estado, setEstado] = useState({ status: 'verificando', usuario: null });
 
@@ -13,7 +12,6 @@ export function SessaoProvider({ children }) {
       .catch(() => setEstado({ status: 'anonimo', usuario: null }));
   }, []);
 
-  // qualquer chamada que receba 401 (sessão vencida) volta para o login
   useEffect(() => {
     const expirou = () => setEstado({ status: 'anonimo', usuario: null });
     window.addEventListener('oppe:sessao-expirada', expirou);

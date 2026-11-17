@@ -59,7 +59,6 @@
   border-left: 4px solid var(--vinho); background: rgba(142, 27, 30, 0.08); color: var(--vinho); font-size: 14px; font-weight: 700;
 }
 
-/* ---------- Pedidos: atalho para acompanhar e último pedido ---------- */
 .bag__track {
   display: flex; justify-content: space-between; align-items: center; gap: 12px;
   margin-top: 16px; padding: 14px 16px; text-decoration: none; font-size: 14px;
@@ -72,7 +71,6 @@
 .bag__ultimo-codigo { font-family: var(--f-mono); font-size: 18px; letter-spacing: 0.06em; }
 .bag__ultimo-acoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 
-/* ---------- Finalizar pedido: dados e entrega ---------- */
 .bag__form { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .bag__intro { margin-top: 16px; }
 .bag__alerta {
@@ -107,7 +105,6 @@
 .campo--erro input, .campo--erro select { border-color: var(--vinho); border-width: 2px; }
 .campo__erro { color: var(--vinho); font-size: 13px; font-weight: 700; }
 
-/* ---------- Pedido criado: o código ---------- */
 .bag__criado { padding-top: 20px; padding-bottom: 24px; display: flex; flex-direction: column; gap: 14px; }
 .bag__codigo-caixa { background: var(--preto); color: var(--cru); padding: 20px; display: flex; flex-direction: column; gap: 8px; }
 .bag__codigo-rotulo { font-family: var(--f-mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--pedra); }

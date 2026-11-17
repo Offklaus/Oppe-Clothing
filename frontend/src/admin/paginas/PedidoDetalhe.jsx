@@ -53,11 +53,11 @@ export default function PedidoDetalhe() {
               </div>
             </section>
 
-            <Mensagem texto={pedido.mensagem} />
+            {pedido.mensagem && <Mensagem texto={pedido.mensagem} />}
           </div>
 
           <div className="adm-pedido__lateral">
-            <FormPedido key={pedido.id} pedido={pedido} onSalvo={setSalvo} />
+            <FormPedido key={`${pedido.id}-${pedido.dadosApagadosEm ?? ''}`} pedido={pedido} onSalvo={setSalvo} />
             <section className="adm-bloco" aria-labelledby="historico-titulo">
               <h2 className="adm-subtitulo" id="historico-titulo">Histórico</h2>
               <ol className="adm-historico">
@@ -66,6 +66,7 @@ export default function PedidoDetalhe() {
                 ))}
               </ol>
             </section>
+            {pedido.apagarDados && <ApagarDados pedido={pedido} onSalvo={setSalvo} />}
           </div>
         </div>
       )}
@@ -73,12 +74,20 @@ export default function PedidoDetalhe() {
   );
 }
 
-/** Dados que o cliente informou ao finalizar (só o painel vê). A loja pode corrigir. */
 function Cliente({ pedido, onSalvo }) {
   const { cliente } = pedido;
   const [editando, setEditando] = useState(false);
 
-  if (editando) {
+  if (pedido.dadosApagadosEm) {
+    return (
+      <section className="adm-bloco" aria-labelledby="cliente-titulo">
+        <h2 className="adm-subtitulo" id="cliente-titulo">Cliente e entrega</h2>
+        <p className="adm-texto">Dados do cliente apagados em {dataHora(pedido.dadosApagadosEm)}.</p>
+      </section>
+    );
+  }
+
+  if (editando && pedido.clienteEdicao) {
     return (
       <EditarEntrega
         pedido={pedido}
@@ -116,7 +125,6 @@ function Cliente({ pedido, onSalvo }) {
   );
 }
 
-/** Corrige nome, contato e endereço. O servidor valida com as mesmas regras do site. */
 function EditarEntrega({ pedido, onCancelar, onSalvo }) {
   const [form, setForm] = useState(pedido.clienteEdicao);
   const [erros, setErros] = useState({});
@@ -196,7 +204,7 @@ function FormPedido({ pedido, onSalvo }) {
     try {
       const atualizado = await api.put(`/pedidos/${pedido.id}`, form);
       onSalvo(atualizado);
-      setForm(camposDoForm(atualizado)); // mostra o que o servidor guardou (ex.: sem espaços sobrando)
+      setForm(camposDoForm(atualizado));
       setAviso('Pedido atualizado. O cliente já vê a nova situação.');
     } catch (falha) {
       setErros(falha.campos ?? {});
@@ -234,6 +242,35 @@ function FormPedido({ pedido, onSalvo }) {
   );
 }
 
+function ApagarDados({ pedido, onSalvo }) {
+  const [mensagem, setMensagem] = useState('');
+  const [apagando, setApagando] = useState(false);
+  const { pode, ajuda } = pedido.apagarDados;
+
+  async function apagar() {
+    if (!window.confirm(`Apagar os dados do cliente do pedido #${pedido.codigo}? Isso não pode ser desfeito.`)) return;
+    setApagando(true);
+    setMensagem('');
+    try {
+      onSalvo(await api.post(`/pedidos/${pedido.id}/apagar-dados`));
+    } catch (falha) {
+      setMensagem(falha.message);
+      setApagando(false);
+    }
+  }
+
+  return (
+    <section className="adm-bloco" aria-labelledby="apagar-titulo">
+      <h2 className="adm-subtitulo" id="apagar-titulo">Dados do cliente</h2>
+      <Alerta>{mensagem}</Alerta>
+      <p className="adm-texto">{ajuda}</p>
+      <button type="button" className="btn btn--perigo" onClick={apagar} disabled={!pode || apagando}>
+        {apagando ? 'Apagando…' : 'Apagar dados do cliente'}
+      </button>
+    </section>
+  );
+}
+
 function Mensagem({ texto }) {
   const [copiado, setCopiado] = useState(false);
 
@@ -242,7 +279,7 @@ function Mensagem({ texto }) {
       await navigator.clipboard.writeText(texto);
       setCopiado(true);
       setTimeout(() => setCopiado(false), 2000);
-    } catch { /* sem permissão: o texto continua visível para copiar à mão */ }
+    } catch { }
   }
 
   return (

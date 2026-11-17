@@ -4,9 +4,8 @@ import { useLoja } from '../context/LojaContext.jsx';
 import { LINK_CONTATO_WHATSAPP } from '../api/client.js';
 import '../components/privacidade/Privacidade.css';
 
-const ATUALIZADA_EM = '13 de novembro de 2026';
+const ATUALIZADA_EM = '17 de novembro de 2026';
 
-/** Política de privacidade (LGPD): o que o site guarda, para quê e como pedir para ver, corrigir ou apagar. */
 export default function PrivacidadePage() {
   const { loja } = useLoja();
 
@@ -82,8 +81,9 @@ export default function PrivacidadePage() {
       <section>
         <h2>Por quanto tempo guardamos</h2>
         <p>
-          Enquanto for preciso para atender o pedido e cumprir obrigações legais, como as fiscais. Depois disso, os dados
-          são apagados.
+          Enquanto for preciso para atender o pedido, trocas e obrigações legais, como as fiscais. Quando você pedir, ou
+          quando não forem mais necessários, apagamos seus dados pessoais do pedido: fica só o registro das peças, do
+          valor e das datas.
         </p>
       </section>
 

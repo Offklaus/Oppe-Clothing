@@ -1,4 +1,3 @@
-// Registro de quem fez o quê no painel.
 export async function registrar(db, { usuario = null, acao, entidade, entidadeId = null, detalhes = null, ip = null }) {
   await db.query(
     `INSERT INTO auditoria (usuario_id, usuario_email, acao, entidade, entidade_id, detalhes, ip)

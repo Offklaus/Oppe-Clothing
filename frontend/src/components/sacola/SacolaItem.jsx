@@ -1,6 +1,5 @@
 import { Link } from 'react-router';
 
-/** Uma linha da sacola, com os valores já calculados pelo servidor. */
 export default function SacolaItem({ item, onMais, onMenos, onRemover, onAbrirPeca }) {
   const destino = `/produto/${item.id}`;
 

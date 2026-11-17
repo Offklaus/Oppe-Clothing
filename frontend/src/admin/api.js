@@ -1,5 +1,3 @@
-// Chamadas do painel. A sessão vai num cookie httpOnly (o JavaScript não lê);
-// o cabeçalho X-Oppe-Admin faz parte da proteção contra CSRF no servidor.
 import { useCallback, useEffect, useState } from 'react';
 
 export class ErroApi extends Error {
@@ -39,7 +37,6 @@ export const api = {
   post: (caminho, corpo) => pedir('POST', caminho, corpo),
   put: (caminho, corpo) => pedir('PUT', caminho, corpo),
   del: (caminho) => pedir('DELETE', caminho),
-  /** Envia (ou só troca o lado de) uma foto da peça. Sem arquivo, só atualiza o lado. */
   foto(produtoId, posicao, lado, arquivo) {
     const formulario = new FormData();
     formulario.append('lado', lado);
@@ -48,7 +45,6 @@ export const api = {
   }
 };
 
-/** Carrega um recurso do painel; `recarregar()` busca de novo. */
 export function useCarregar(caminho) {
   const [estado, setEstado] = useState({ carregando: true, dados: null, erro: null });
   const [versao, setVersao] = useState(0);

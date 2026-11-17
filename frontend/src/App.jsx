@@ -2,7 +2,6 @@ import { lazy, Suspense } from 'react';
 import { Route, Routes } from 'react-router';
 import SitePublico from './components/layout/SitePublico.jsx';
 
-// o painel só é baixado por quem abre /admin
 const AdminApp = lazy(() => import('./admin/AdminApp.jsx'));
 
 export default function App() {

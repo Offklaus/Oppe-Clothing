@@ -1,7 +1,3 @@
-/**
- * Botões de tamanho. `erro` destaca o grupo quando o cliente tenta pedir sem escolher.
- * `esgotados` (vem do servidor) aparecem riscados e não dá para escolher.
- */
 export default function SeletorTamanho({ tamanhos, esgotados = [], valor, onEscolher, erro, refPrimeiro, onVerMedidas }) {
   const status = erro ? 'Escolha um tamanho antes de pedir' : valor ? `Escolhido: ${valor}` : 'Escolha um tamanho';
   const primeiroDisponivel = tamanhos.find((t) => !esgotados.includes(t));

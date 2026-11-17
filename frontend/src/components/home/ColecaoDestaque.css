@@ -19,8 +19,13 @@
 .colecao__text { grid-area: text; max-width: 460px; font-size: 17px; line-height: 1.55; color: var(--pedra); }
 .colecao__cta { grid-area: cta; justify-self: start; }
 .colecao__imgs { grid-area: imgs; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.colecao__esgotado {
+  position: absolute; left: 12px; bottom: 12px;
+  background: var(--vinho); color: var(--cru); padding: 6px 10px;
+  font-family: var(--f-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.14em;
+}
 .colecao__img {
-  aspect-ratio: 4 / 5; background: var(--concreto); overflow: hidden;
+  position: relative; aspect-ratio: 4 / 5; background: var(--concreto); overflow: hidden;
   display: flex; align-items: center; justify-content: center; text-decoration: none;
 }
 .colecao__img img { width: 100%; height: auto; transition: transform 0.6s var(--ease-out); }

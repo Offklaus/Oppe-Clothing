@@ -1,4 +1,3 @@
-// Regras do catálogo: o que aparece no site, como aparece, e o cadastro feito pelo painel.
 import * as repoProdutos from '../repos/produtos.js';
 import * as repoColecoes from '../repos/colecoes.js';
 import * as repoLoja from '../repos/loja.js';
@@ -8,28 +7,23 @@ import { emTransacao } from '../db/pool.js';
 import { ErroHttp, naoEncontrado } from '../erros.js';
 import { urlDaImagem } from './armazenamento.js';
 import {
-  LIMITE_QTD, UFS, centavosParaCampo, formatarCodigo, formatarWhatsapp, gerarSlug, normalizarInstagram, normalizarWhatsapp,
+  ESTOQUE_MAXIMO, LIMITE_QTD, UFS, centavosParaCampo, formatarCodigo, formatarWhatsapp, gerarSlug, normalizarInstagram, normalizarWhatsapp,
   paraCentavos, plural, precoTexto, temMarcador
 } from './formatos.js';
 
 const urlImagem = urlDaImagem;
 const camposInvalidos = (campos) => new ErroHttp(400, 'Confira os campos destacados.', campos);
 
-/** Preço da peça: o dela, ou o preço padrão da loja. */
 export const precoDoProduto = (p, loja) => p.preco_centavos ?? loja.preco_padrao_centavos ?? null;
 
-/** Quantas peças há do tamanho. null = a peça não controla estoque (sem limite). */
 export const disponivel = (p, tamanho) => (p.controla_estoque ? Number(p.estoque?.[tamanho] ?? 0) : null);
 
-/** Tamanhos da loja que acabaram nesta peça. */
 const tamanhosEsgotados = (p, loja) => (p.controla_estoque ? loja.tamanhos.filter((t) => disponivel(p, t) === 0) : []);
 
-/** Todos os tamanhos acabaram: a peça continua no catálogo com o selo ESGOTADO. */
 const pecaEsgotada = (p, loja) => p.controla_estoque && tamanhosEsgotados(p, loja).length === loja.tamanhos.length;
 
 const fotoPrincipal = (p) => p.imagens.find((i) => i.posicao === 0) ?? null;
 
-/** Sempre duas faces (frente/costas) para o varal girar; sem verso, repete a principal. */
 function faces(p) {
   const principal = fotoPrincipal(p);
   if (!principal) return [];
@@ -61,17 +55,19 @@ function textoEstampa(p, loja) {
 
 const tabelaDeMedidas = (m) => (m?.colunas?.length && m?.linhas?.length ? m : null);
 
-// ======================= Site =======================
-
 export async function lojaPublica(db) {
   const [loja, colecoes, visiveis] = await Promise.all([
     repoLoja.obter(db), repoColecoes.listarVisiveis(db), repoProdutos.listarVisiveis(db)
   ]);
-  const destaque = visiveis.find((p) => p.id === loja.destaque_produto_id) ?? visiveis[0] ?? null;
+  const aVendaPrimeiro = (lista) => [
+    ...lista.filter((p) => !pecaEsgotada(p, loja)), ...lista.filter((p) => pecaEsgotada(p, loja))
+  ];
+  const escolhida = visiveis.find((p) => p.id === loja.destaque_produto_id);
+  const destaque = aVendaPrimeiro(escolhida ? [escolhida, ...visiveis.filter((p) => p !== escolhida)] : visiveis)[0] ?? null;
 
   let colecaoDestaque = null;
   const colecao = colecoes.find((c) => c.id === loja.colecao_destaque_id);
-  const pecas = visiveis.filter((p) => p.colecao_id === loja.colecao_destaque_id).slice(0, 2);
+  const pecas = aVendaPrimeiro(visiveis.filter((p) => p.colecao_id === loja.colecao_destaque_id)).slice(0, 2);
   if (colecao && pecas.length) {
     colecaoDestaque = {
       slug: colecao.slug,
@@ -92,7 +88,6 @@ export async function lojaPublica(db) {
     destaqueId: destaque?.slug ?? null,
     colecaoDestaque,
     qtdMaxima: LIMITE_QTD,
-    // estados aceitos no endereço de entrega (a validação é a do servidor; o site só monta a lista)
     ufs: UFS
   };
 }
@@ -109,7 +104,6 @@ export async function detalheParaSite(db, slug) {
   if (!p) throw naoEncontrado('Peça');
   const [loja, todos] = await Promise.all([repoLoja.obter(db), repoProdutos.listarVisiveis(db)]);
 
-  // "Combina com": primeiro as peças da mesma coleção, depois as outras
   const outros = todos.filter((x) => x.id !== p.id);
   const relacionados = [
     ...outros.filter((x) => x.colecao_id === p.colecao_id),
@@ -130,14 +124,11 @@ export async function detalheParaSite(db, slug) {
     galeria,
     ficha,
     tamanhos: loja.tamanhos,
-    // aparecem riscados e não dá para escolher
     tamanhosEsgotados: tamanhosEsgotados(p, loja),
     medidas: tabelaDeMedidas(loja.medidas),
     relacionados: relacionados.map((x) => paraCard(x, loja))
   };
 }
-
-// ======================= Painel: peças =======================
 
 function pendenciasDaPeca(p, loja) {
   const lista = [];
@@ -150,7 +141,6 @@ function pendenciasDaPeca(p, loja) {
   return lista;
 }
 
-/** Estoque da peça para o painel: um tamanho por linha e o total. */
 function estoqueDaPeca(p, loja) {
   const tamanhos = loja.tamanhos.map((tamanho) => ({ tamanho, quantidade: Number(p.estoque?.[tamanho] ?? 0) }));
   const total = tamanhos.reduce((s, t) => s + t.quantidade, 0);
@@ -158,6 +148,7 @@ function estoqueDaPeca(p, loja) {
     controla: p.controla_estoque,
     tamanhos,
     total,
+    maximo: ESTOQUE_MAXIMO,
     texto: p.controla_estoque
       ? `${tamanhos.map((t) => `${t.tamanho} ${t.quantidade}`).join(' · ')} (${plural(total, 'peça', 'peças')})`
       : 'Não controlado'
@@ -237,36 +228,36 @@ export async function listarProdutosAdmin(db) {
   return lista.map((p) => paraAdminResumo(p, loja));
 }
 
-export async function produtoAdmin(db, id) {
+export async function produtoAdmin(db, id, { comMovimentos = false } = {}) {
   const p = await repoProdutos.porId(db, id);
   if (!p) throw naoEncontrado('Peça');
-  const [loja, movimentos] = await Promise.all([repoLoja.obter(db), repoEstoque.movimentos(db, id)]);
-  return { ...paraAdminDetalhe(p, loja), movimentosEstoque: movimentos.map(paraMovimento) };
+  const [loja, movimentos] = await Promise.all([repoLoja.obter(db), comMovimentos ? repoEstoque.movimentos(db, id) : null]);
+  const detalhe = paraAdminDetalhe(p, loja);
+  return movimentos ? { ...detalhe, movimentosEstoque: movimentos.map(paraMovimento) } : detalhe;
 }
 
-/**
- * Ajuste de estoque no painel. "anteriores" são os números que estavam na tela: se algum mudou
- * enquanto a loja editava (entrou um pedido), nada é gravado — para não apagar a reserva sem querer.
- */
 export async function salvarEstoque(pool, id, { controla, quantidades, anteriores = {} }, usuario) {
+  const tem = Object.hasOwn;
   const resumo = await emTransacao(pool, async (db) => {
-    const p = await repoProdutos.porId(db, id);
+    const [p, loja] = await Promise.all([repoProdutos.dadosDoEstoque(db, id), repoLoja.obter(db)]);
     if (!p) throw naoEncontrado('Peça');
-    const loja = await repoLoja.obter(db);
 
     const desconhecidos = Object.keys(quantidades).filter((t) => !loja.tamanhos.includes(t));
     if (desconhecidos.length) throw camposInvalidos({ quantidades: `Tamanho que a loja não vende: ${desconhecidos.join(', ')}.` });
 
-    const atuais = await repoEstoque.travarDaPeca(db, id);
-    const mudaram = loja.tamanhos.filter((t) => t in anteriores && anteriores[t] !== (atuais[t] ?? 0));
+    const atuais = {};
+    const tocados = loja.tamanhos.filter((t) => tem(quantidades, t) || tem(anteriores, t)).map((tamanho) => ({ produtoId: id, tamanho }));
+    for (const { tamanho } of repoEstoque.ordenarParaTravar(tocados)) atuais[tamanho] = await repoEstoque.travar(db, id, tamanho);
+
+    const mudaram = loja.tamanhos.filter((t) => tem(anteriores, t) && anteriores[t] !== atuais[t]);
     if (mudaram.length) {
       throw new ErroHttp(409, `O estoque de ${mudaram.join(', ')} mudou enquanto você editava (entrou ou saiu um pedido). Confira os números e salve de novo.`);
     }
 
     const mudancas = [];
     for (const tamanho of loja.tamanhos) {
-      if (!(tamanho in quantidades)) continue;
-      const de = atuais[tamanho] ?? 0;
+      if (!tem(quantidades, tamanho)) continue;
+      const de = atuais[tamanho];
       const para = quantidades[tamanho];
       await repoEstoque.ajustar(db, { produtoId: id, tamanho, de, para, usuarioId: usuario?.id ?? null });
       if (de !== para) mudancas.push(`${tamanho} ${de}→${para}`);
@@ -277,10 +268,9 @@ export async function salvarEstoque(pool, id, { controla, quantidades, anteriore
     }
     return { nome: p.nome, cor: p.cor, mudancas };
   });
-  return { produto: await produtoAdmin(pool, id), resumo };
+  return { produto: await produtoAdmin(pool, id, { comMovimentos: true }), resumo };
 }
 
-/** Primeiro candidato livre; se todos estiverem em uso, acrescenta -2, -3... */
 async function slugLivre(db, candidatos, emUso, excetoId) {
   for (const c of candidatos) {
     const slug = gerarSlug(c);
@@ -301,7 +291,7 @@ async function prepararPeca(db, dados, id = null) {
   if (slug) {
     if (await repoProdutos.slugEmUso(db, slug, id)) throw new ErroHttp(409, 'Esse endereço já é usado por outra peça.', { slug: 'Já existe uma peça com esse endereço.' });
   } else if (id) {
-    slug = (await repoProdutos.porId(db, id)).slug; // mantém o endereço atual
+    slug = (await repoProdutos.porId(db, id)).slug;
   } else {
     slug = await slugLivre(db, [dados.nome, `${dados.nome} ${dados.cor}`], repoProdutos.slugEmUso, null);
   }
@@ -325,8 +315,6 @@ export async function removerProduto(db, id) {
   const arquivos = await repoProdutos.remover(db, id);
   return { nome: p.nome, cor: p.cor, arquivos };
 }
-
-// ======================= Painel: coleções =======================
 
 const paraColecaoAdmin = (c) => ({
   id: c.id, slug: c.slug, nome: c.nome, chamada: c.chamada, frase: c.frase, descricao: c.descricao,
@@ -381,8 +369,6 @@ export async function removerColecao(db, id) {
   return c;
 }
 
-// ======================= Painel: loja =======================
-
 export async function lojaAdmin(db) {
   const [l, produtos, colecoes] = await Promise.all([
     repoLoja.obter(db), repoProdutos.listarTodos(db), repoColecoes.listarTodas(db)
@@ -426,8 +412,6 @@ export async function salvarLoja(db, dados) {
   return lojaAdmin(db);
 }
 
-// ======================= Painel: resumo =======================
-
 export async function resumoAdmin(db, { siteUrl, producao }) {
   const [loja, produtos, colecoes, pedidosPorStatus] = await Promise.all([
     repoLoja.obter(db), repoProdutos.listarTodos(db), repoColecoes.listarTodas(db), repoPedidos.contarPorStatus(db)
@@ -439,6 +423,10 @@ export async function resumoAdmin(db, { siteUrl, producao }) {
   if (pedidosNovos) avisar(`${plural(pedidosNovos, 'pedido aguardando', 'pedidos aguardando')} pagamento.`, '/admin/pedidos?status=novo');
   const comEsgotado = produtos.filter((p) => p.ativo && tamanhosEsgotados(p, loja).length).length;
   if (comEsgotado) avisar(`${plural(comEsgotado, 'peça tem', 'peças têm')} tamanho esgotado. Reponha o estoque ou confira.`, '/admin/produtos');
+  const destaqueEsgotado = produtos.find((p) => p.id === loja.destaque_produto_id && pecaEsgotada(p, loja));
+  if (destaqueEsgotado) {
+    avisar(`A peça em destaque (${destaqueEsgotado.nome}) está esgotada, então o varal abre em outra peça. Reponha o estoque ou escolha outro destaque.`, '/admin/loja');
+  }
 
   if (!loja.whatsapp_numero) avisar('Cadastre o WhatsApp que recebe os pedidos.', '/admin/loja');
   const semPreco = produtos.filter((p) => precoDoProduto(p, loja) == null).length;

@@ -3,7 +3,6 @@ import { api } from '../api.js';
 
 const LADOS = ['Costas', 'Frente'];
 
-/** Uma das duas fotos da peça: enviar, trocar, marcar o lado ou remover. */
 export default function FotoProduto({ produtoId, foto, onAtualizado }) {
   const [lado, setLado] = useState(foto.lado);
   const [enviando, setEnviando] = useState(false);

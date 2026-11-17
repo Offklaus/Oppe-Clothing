@@ -1,6 +1,3 @@
-// Pedido: valida as peças, calcula valores, registra o pedido com os dados do cliente,
-// monta a mensagem do WhatsApp e responde a consulta pública pelo código.
-// Preço, total, texto e etapas saem sempre daqui, nunca do navegador.
 import { randomInt } from 'node:crypto';
 import * as repoProdutos from '../repos/produtos.js';
 import * as repoLoja from '../repos/loja.js';
@@ -16,7 +13,6 @@ import {
 
 export const LIMITE_ITENS = 50;
 
-/** Situações do pedido, na ordem do atendimento. */
 export const STATUS = {
   novo: 'Aguardando pagamento',
   pago: 'Pagamento confirmado',
@@ -26,21 +22,15 @@ export const STATUS = {
   cancelado: 'Cancelado'
 };
 
-// ---------- código do pedido ----------
-
-// sem 0/O e 1/I, que se confundem ao ler ou ditar o código
 const ALFABETO_CODIGO = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
 const gerarCodigo = () => Array.from({ length: 8 }, () => ALFABETO_CODIGO[randomInt(ALFABETO_CODIGO.length)]).join('');
 
 export { formatarCodigo };
 
-/** Aceita "#k7q2-mx9p", "K7Q2 MX9P"…; devolve null se não tem formato de código. */
 export function normalizarCodigo(texto) {
   const limpo = String(texto ?? '').slice(0, 40).toUpperCase().replace(/[^0-9A-Z]/g, '');
   return /^[2-9A-HJ-NP-Z]{6}$|^[2-9A-HJ-NP-Z]{8}$/.test(limpo) ? limpo : null;
 }
-
-// ---------- sacola ----------
 
 function conferirLista(itens) {
   if (!Array.isArray(itens)) throw new ErroHttp(400, 'Pedido inválido.');
@@ -53,11 +43,6 @@ async function carregar(db, itens) {
   return { mapa: new Map(produtos.map((p) => [p.slug, p])), loja };
 }
 
-/**
- * Junta peça + tamanho repetidos e confere tudo.
- * estrito = true: qualquer problema recusa o pedido.
- * estrito = false: itens com problema saem da lista e são informados (prévia da sacola).
- */
 function normalizar(itens, { mapa, loja }, estrito) {
   const linhas = new Map();
   const removidos = [];
@@ -82,7 +67,6 @@ function normalizar(itens, { mapa, loja }, estrito) {
     else linhas.set(chave, { produto, tamanho, qtd });
   }
 
-  // estoque (só das peças que controlam): na prévia ajusta e avisa; no pedido, recusa
   const conferidas = [];
   const avisos = [];
   for (const linha of linhas.values()) {
@@ -101,7 +85,6 @@ function normalizar(itens, { mapa, loja }, estrito) {
 
 const restam = (n) => (n === 1 ? 'só resta 1 peça' : `só restam ${n} peças`);
 
-/** Pedido com mais peças do que há no estoque. */
 const semEstoque = (rotulo, disp) => new ErroHttp(409, disp
   ? `${rotulo}: ${restam(disp)}. Volte à sacola e ajuste a quantidade.`
   : `${rotulo} esgotou. Volte à sacola para tirar a peça.`);
@@ -119,7 +102,6 @@ function somar(linhas, loja) {
   return { pecas, totalCentavos: todosComPreco ? total : null };
 }
 
-/** O que a sacola mostra: itens válidos e valores. */
 export async function previa(db, itens) {
   conferirLista(itens);
   if (itens.length === 0) {
@@ -155,8 +137,6 @@ export async function previa(db, itens) {
   };
 }
 
-// ---------- novo pedido ----------
-
 function montarMensagem({ linhas, loja, pecas, totalCentavos, siteUrl, codigo, cliente }) {
   const M = loja.mensagens ?? {};
   const base = String(siteUrl ?? '').replace(/\/+$/, '');
@@ -187,13 +167,7 @@ const respostaDoPedido = (codigo, mensagem, loja, novo) => ({
   acompanharUrl: `/acompanhar?codigo=${codigo}`
 });
 
-/**
- * Registra o pedido com os dados do cliente (já validados) e devolve o código e o link do WhatsApp.
- * A mesma chave devolve sempre o mesmo pedido: clique duplo não cria dois.
- */
 export async function criarPedido(pool, { chave, itens, cliente }, { siteUrl }) {
-  // Repetir a chave (clique duplo, nova tentativa após falha de rede) devolve o mesmo pedido —
-  // mas só para quem mandou os mesmos dados: a mensagem traz nome, cidade e CEP do cliente.
   const jaFeito = async () => {
     const existente = await repoPedidos.buscarPorChave(pool, chave);
     if (!existente) return null;
@@ -213,7 +187,6 @@ export async function criarPedido(pool, { chave, itens, cliente }, { siteUrl }) 
   const copiaDasPecas = linhas.map(({ produto, tamanho, qtd }) => ({
     produtoId: produto.id, slug: produto.slug, nome: produto.nome, cor: produto.cor,
     tamanho, qtd, precoCentavos: precoDoProduto(produto, contexto.loja),
-    // peça com estoque controlado sai do estoque junto com o pedido
     reservado: Boolean(produto.controla_estoque)
   }));
 
@@ -225,8 +198,7 @@ export async function criarPedido(pool, { chave, itens, cliente }, { siteUrl }) 
         const { id: pedidoId } = await repoPedidos.criar(db, {
           codigo, chave, pecas, totalCentavos, mensagem, cliente, itens: copiaDasPecas
         });
-        // retirada atômica: se outro pedido levou a peça nesse meio-tempo, desfaz tudo
-        for (const peca of copiaDasPecas.filter((x) => x.reservado)) {
+        for (const peca of repoEstoque.ordenarParaTravar(copiaDasPecas.filter((x) => x.reservado))) {
           const saldo = await repoEstoque.retirar(db, { ...peca, motivo: 'pedido', pedidoId });
           if (saldo == null) {
             throw semEstoque(`${peca.nome} (${peca.tamanho})`, await repoEstoque.quantidade(db, peca.produtoId, peca.tamanho));
@@ -236,9 +208,8 @@ export async function criarPedido(pool, { chave, itens, cliente }, { siteUrl }) 
       return respostaDoPedido(codigo, mensagem, contexto.loja, true);
     } catch (erro) {
       if (erro.code !== '23505') throw erro;
-      // mesma chave gravada ao mesmo tempo por outro clique: devolve aquele pedido
       if (erro.constraint === 'pedidos_chave_key') return jaFeito();
-      if (tentativa >= 5) throw erro; // código repetido (raríssimo): tenta outro
+      if (tentativa >= 5) throw erro;
     }
   }
 }
@@ -248,15 +219,8 @@ export async function linkContato(db) {
   return linkWhatsapp(loja.whatsapp_numero, loja.mensagens?.contato ?? '');
 }
 
-// ---------- consulta pública (página "Acompanhar pedido") ----------
-
 const ORDEM = ['novo', 'pago', 'em_preparacao', 'enviado', 'entregue'];
 
-/**
- * Cada etapa fica "atual" a partir de uma situação e "feita" a partir de outra.
- * dataFeita: de qual mudança vem a data mostrada quando a etapa está feita
- * (o envio termina quando o pedido é entregue, mas a data que importa é a do envio).
- */
 const ETAPAS = [
   { chave: 'pagamento', rotulo: 'Pagamento', ativa: 'novo', feita: 'pago', dataFeita: 'pago',
     textos: { atual: 'Aguardando pagamento', feita: 'Pagamento confirmado' } },
@@ -294,10 +258,6 @@ function etapasDoPedido(p) {
 
 const naoAchado = () => new ErroHttp(404, 'Não encontramos um pedido com esse código. Confira e tente de novo.');
 
-/**
- * O que o cliente vê ao consultar o código: andamento, peças e total.
- * Nunca devolve nome, e-mail, telefone ou endereço — quem tem o código vê só o andamento.
- */
 export async function consultarPedido(db, texto) {
   const codigo = normalizarCodigo(texto);
   if (!codigo) throw naoAchado();
@@ -324,8 +284,6 @@ export async function consultarPedido(db, texto) {
     totalTexto: p.total_centavos == null ? 'A combinar' : formatarBRL(Number(p.total_centavos))
   };
 }
-
-// ---------- painel ----------
 
 const opcoesStatus = () => Object.entries(STATUS).map(([valor, rotulo]) => ({ valor, rotulo }));
 const totalTexto = (centavos) => (centavos == null ? 'A combinar' : formatarBRL(Number(centavos)));
@@ -357,7 +315,7 @@ export async function listarPedidosAdmin(db, { status, busca }) {
       resumo: resumoDasPecas(p.itens),
       rotuloPecas: plural(p.pecas, 'peça', 'peças'),
       totalTexto: totalTexto(p.total_centavos),
-      cliente: p.cliente_nome
+      cliente: p.cliente_nome || (p.dados_apagados_em ? 'Dados apagados' : '')
     }))
   };
 }
@@ -373,9 +331,23 @@ function enderecoEmLinhas(p) {
   ].filter(Boolean);
 }
 
+const SITUACOES_QUE_PERMITEM_APAGAR = ['entregue', 'cancelado'];
+
+function apagarDados(p) {
+  if (p.dados_apagados_em) return null;
+  const pode = SITUACOES_QUE_PERMITEM_APAGAR.includes(p.status);
+  return {
+    pode,
+    ajuda: pode
+      ? 'Apaga nome, e-mail, WhatsApp, endereço, mensagem, observações e rastreio. Ficam as peças, o valor e as datas. Não dá para desfazer.'
+      : 'Disponível quando o pedido estiver entregue ou cancelado.'
+  };
+}
+
 export async function pedidoAdmin(db, id) {
   const p = await repoPedidos.obter(db, id);
   if (!p) throw naoEncontrado('Pedido');
+  const apagado = Boolean(p.dados_apagados_em);
   return {
     id: p.id,
     codigo: formatarCodigo(p.codigo),
@@ -388,12 +360,12 @@ export async function pedidoAdmin(db, id) {
       nome: p.cliente_nome,
       email: p.cliente_email,
       telefoneTexto: formatarWhatsapp(p.cliente_telefone),
-      // conversa com o cliente no WhatsApp (sem texto pronto)
       linkWhatsapp: p.cliente_telefone ? `https://wa.me/${p.cliente_telefone}` : null,
       endereco: enderecoEmLinhas(p)
     },
-    // os mesmos dados no formato do formulário de correção (mesmas regras do site)
-    clienteEdicao: {
+    dadosApagadosEm: p.dados_apagados_em,
+    apagarDados: apagarDados(p),
+    clienteEdicao: apagado ? null : {
       nome: p.cliente_nome,
       email: p.cliente_email,
       telefone: formatarWhatsapp(p.cliente_telefone) ?? '',
@@ -414,7 +386,6 @@ export async function pedidoAdmin(db, id) {
       precoTexto: precoTexto(i.preco_centavos),
       subtotalTexto: i.preco_centavos == null ? 'Sob consulta' : formatarBRL(i.preco_centavos * i.qtd),
       imagem: i.arquivo ? urlDaImagem(i.arquivo) : null,
-      // link só para peça que ainda está no catálogo
       linkPeca: i.slug_atual && i.produto_ativo ? `/produto/${i.slug_atual}` : null,
       linkEditar: i.produto_id ? `/admin/produtos/${i.produto_id}` : null
     })),
@@ -428,29 +399,44 @@ export async function pedidoAdmin(db, id) {
   };
 }
 
-/** Atualiza situação, rastreio e observações. Devolve o pedido e se a situação mudou. */
-/**
- * Atualiza situação, rastreio, observações e dados de entrega. Devolve o pedido e se a situação mudou.
- * Cancelar devolve as peças ao estoque; tirar do "cancelado" retira de novo (se ainda houver).
- */
 export async function atualizarPedido(pool, id, dados, usuario = null) {
   if (!Object.values(dados).some((v) => v !== undefined)) throw new ErroHttp(400, 'Nada para alterar.');
-  const resultado = await emTransacao(pool, async (db) => {
-    const r = await repoPedidos.atualizar(db, id, dados);
-    if (!r?.mudou) return r;
-    if (dados.status === 'cancelado') await devolverAoEstoque(db, id, usuario);
-    else if (r.statusAnterior === 'cancelado') await retirarDeNovo(db, id, usuario);
-    return r;
+  const mudou = await emTransacao(pool, async (db) => {
+    const atual = await repoPedidos.travar(db, id);
+    if (!atual) throw naoEncontrado('Pedido');
+    if (dados.cliente && atual.dados_apagados_em) {
+      throw new ErroHttp(409, 'Os dados do cliente deste pedido foram apagados e não podem ser preenchidos de novo.');
+    }
+    const mudouStatus = await repoPedidos.atualizar(db, id, dados, atual.status);
+    if (mudouStatus && dados.status === 'cancelado') await devolverAoEstoque(db, id, usuario);
+    else if (mudouStatus && atual.status === 'cancelado') await retirarDeNovo(db, id, usuario);
+    return mudouStatus;
   });
-  if (!resultado) throw naoEncontrado('Pedido');
-  return { pedido: await pedidoAdmin(pool, id), mudouStatus: resultado.mudou };
+  return { pedido: await pedidoAdmin(pool, id), mudouStatus: mudou };
+}
+
+export async function apagarDadosDoCliente(pool, id) {
+  await emTransacao(pool, async (db) => {
+    const atual = await repoPedidos.travar(db, id);
+    if (!atual) throw naoEncontrado('Pedido');
+    if (atual.dados_apagados_em) throw new ErroHttp(409, 'Os dados do cliente deste pedido já foram apagados.');
+    if (!SITUACOES_QUE_PERMITEM_APAGAR.includes(atual.status)) {
+      throw new ErroHttp(409, 'Só dá para apagar os dados de um pedido entregue ou cancelado.');
+    }
+    await repoPedidos.apagarDadosDoCliente(db, id);
+  });
+  return pedidoAdmin(pool, id);
+}
+
+async function pecasDoEstoque(db, pedidoId, incluir) {
+  const itens = await repoPedidos.itensParaEstoque(db, pedidoId);
+  return repoEstoque.ordenarParaTravar(itens.filter((i) => i.produto_id && incluir(i)).map((i) => ({ ...i, produtoId: i.produto_id })));
 }
 
 async function devolverAoEstoque(db, pedidoId, usuario) {
-  for (const item of await repoPedidos.itensParaEstoque(db, pedidoId)) {
-    if (!item.reservado || !item.produto_id) continue;
+  for (const item of await pecasDoEstoque(db, pedidoId, (i) => i.reservado)) {
     await repoEstoque.devolver(db, {
-      produtoId: item.produto_id, tamanho: item.tamanho, qtd: item.qtd,
+      produtoId: item.produtoId, tamanho: item.tamanho, qtd: item.qtd,
       motivo: 'cancelamento', pedidoId, usuarioId: usuario?.id ?? null
     });
     await repoPedidos.marcarReservado(db, pedidoId, item.posicao, false);
@@ -458,14 +444,13 @@ async function devolverAoEstoque(db, pedidoId, usuario) {
 }
 
 async function retirarDeNovo(db, pedidoId, usuario) {
-  for (const item of await repoPedidos.itensParaEstoque(db, pedidoId)) {
-    if (item.reservado || !item.produto_id || !item.controla_estoque) continue;
+  for (const item of await pecasDoEstoque(db, pedidoId, (i) => !i.reservado && i.controla_estoque)) {
     const saldo = await repoEstoque.retirar(db, {
-      produtoId: item.produto_id, tamanho: item.tamanho, qtd: item.qtd,
+      produtoId: item.produtoId, tamanho: item.tamanho, qtd: item.qtd,
       motivo: 'reativacao', pedidoId, usuarioId: usuario?.id ?? null
     });
     if (saldo == null) {
-      const disp = await repoEstoque.quantidade(db, item.produto_id, item.tamanho);
+      const disp = await repoEstoque.quantidade(db, item.produtoId, item.tamanho);
       throw new ErroHttp(409, `Não dá para reativar: ${item.nome} (${item.tamanho}) tem ${plural(disp, 'peça', 'peças')} no estoque e o pedido precisa de ${item.qtd}.`);
     }
     await repoPedidos.marcarReservado(db, pedidoId, item.posicao, true);

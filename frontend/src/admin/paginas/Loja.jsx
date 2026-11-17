@@ -31,7 +31,6 @@ export default function Loja() {
   const mudar = (campo) => (e) => setForm((f) => ({ ...f, [campo]: e.target.value }));
   const mudarMensagem = (campo) => (e) => setForm((f) => ({ ...f, mensagens: { ...f.mensagens, [campo]: e.target.value } }));
 
-  // ---- tabela de medidas ----
   const medidas = form?.medidas ?? { colunas: [], linhas: [] };
   const definirMedidas = (m) => setForm((f) => ({ ...f, medidas: m }));
   const mudarColuna = (j, valor) => definirMedidas({ ...medidas, colunas: medidas.colunas.map((c, k) => (k === j ? valor : c)) });

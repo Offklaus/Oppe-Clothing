@@ -1,5 +1,3 @@
-/* Painel Oppe Clothing — mesmo sistema visual do site, num layout de trabalho. */
-
 .adm-carregando { padding: 48px var(--gutter); font-family: var(--f-mono); letter-spacing: 0.1em; }
 
 .adm {
@@ -7,7 +5,6 @@
   background: var(--cru); color: var(--preto);
 }
 
-/* ---------- lateral ---------- */
 .adm__lateral {
   position: sticky; top: 0; height: 100vh; overflow-y: auto;
   background: var(--preto); color: var(--cru);
@@ -33,14 +30,12 @@
 
 .adm__conteudo { padding: 32px clamp(16px, 4vw, 48px) 72px; max-width: 1180px; width: 100%; }
 
-/* ---------- títulos ---------- */
 .adm-cabecalho { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 28px; }
 .adm-cabecalho__acoes { display: flex; flex-wrap: wrap; gap: 10px; }
 .adm-titulo { font-family: var(--f-display); font-weight: 400; text-transform: uppercase; font-size: clamp(36px, 4vw, 52px); line-height: 0.95; }
 .adm-subtitulo { font-family: var(--f-display); font-weight: 400; text-transform: uppercase; font-size: 26px; line-height: 1; }
 .adm-texto { color: var(--grafite); font-size: 15px; }
 
-/* ---------- blocos ---------- */
 .adm-bloco { border: 1px solid var(--concreto); padding: 24px; display: flex; flex-direction: column; gap: 18px; margin-bottom: 24px; }
 .adm-bloco__titulo { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 .adm-grade { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
@@ -49,7 +44,6 @@
 .adm-acoes { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .adm-acoes--fim { justify-content: flex-end; }
 
-/* ---------- campos ---------- */
 .adm-campo { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .adm-campo label { font-family: var(--f-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
 .adm-campo input, .adm-campo select, .adm-campo textarea, .adm-mini {
@@ -66,11 +60,9 @@
 .adm-check label { display: flex; flex-direction: column; font-weight: 700; font-size: 15px; cursor: pointer; }
 .adm-check small { font-weight: 400; color: var(--grafite); font-size: 13px; }
 
-/* ---------- avisos ---------- */
 .adm-alerta { padding: 14px 16px; border-left: 4px solid var(--vinho); background: rgba(142, 27, 30, 0.08); color: var(--vinho); font-weight: 700; font-size: 15px; }
 .adm-alerta--ok { border-left-color: var(--preto); background: var(--concreto-claro); color: var(--preto); }
 
-/* ---------- botões extras ---------- */
 .btn--perigo { border-color: var(--vinho); color: var(--vinho); }
 .btn--perigo:hover { background: var(--vinho); border-color: var(--vinho); color: var(--cru); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
@@ -79,7 +71,6 @@
 .adm-link-botao { border: 0; background: none; padding: 8px 0; cursor: pointer; font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
 .adm-link-botao:hover { color: var(--vinho); }
 
-/* ---------- tabelas ---------- */
 .adm-tabela-wrap { overflow-x: auto; }
 .adm-tabela { width: 100%; border-collapse: collapse; font-size: 15px; }
 .adm-tabela th {
@@ -94,7 +85,6 @@
 .adm-miniatura img { width: 100%; height: 100%; object-fit: contain; }
 .adm-miniatura span { font-family: var(--f-mono); font-size: 9px; color: var(--grafite); text-align: center; }
 
-/* ---------- selos ---------- */
 .adm-selos { display: flex; flex-wrap: wrap; gap: 6px; }
 .adm-selo {
   display: inline-flex; align-items: center; padding: 3px 8px; white-space: nowrap;
@@ -104,7 +94,6 @@
 .adm-selo--off { color: var(--grafite); }
 .adm-selo--aviso { color: var(--vinho); }
 
-/* ---------- pedidos ---------- */
 .adm-intro { margin: -12px 0 20px; max-width: 70ch; }
 .adm-vazio { padding: 32px 0; }
 .adm-barra { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 18px; }
@@ -158,7 +147,6 @@
   white-space: pre-wrap; word-break: break-word; font-family: var(--f-mono); font-size: 13px; line-height: 1.55;
 }
 
-/* ---------- estoque ---------- */
 .adm-estoque-form { display: flex; flex-direction: column; gap: 14px; }
 .adm-estoque { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 12px; }
 .adm-estoque:disabled { opacity: 0.45; }
@@ -171,7 +159,6 @@
 .adm-estoque__saida { color: var(--vinho); font-family: var(--f-mono); font-weight: 700; }
 .adm-estoque__lista { font-family: var(--f-mono); font-size: 12px; color: var(--grafite); min-width: 150px; }
 
-/* ---------- resumo ---------- */
 .adm-numeros { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; margin-bottom: 28px; }
 .adm-numero--link { text-decoration: none; color: var(--preto); }
 .adm-numero--link:hover { background: var(--preto); color: var(--cru); }
@@ -184,7 +171,6 @@
 .adm-pendencias li::before { content: '✦'; color: var(--vermelho); margin-right: 10px; }
 .adm-pendencias li span { flex: 1; }
 
-/* ---------- fotos ---------- */
 .adm-fotos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .adm-foto { border: 1px solid var(--concreto); padding: 14px; display: flex; flex-direction: column; gap: 12px; }
 .adm-foto__img { aspect-ratio: 1 / 1; background: var(--concreto); display: flex; align-items: center; justify-content: center; }
@@ -195,20 +181,17 @@
 .adm-arquivo input:disabled { cursor: not-allowed; }
 .adm-arquivo:focus-within .btn { outline: 2px solid var(--vermelho); outline-offset: 3px; }
 
-/* ---------- tabela de medidas ---------- */
 .adm-medidas { border-collapse: collapse; }
 .adm-medidas td, .adm-medidas th { padding: 4px; }
 .adm-mini { min-height: 40px; padding: 6px 8px; font-size: 15px; min-width: 90px; }
 .adm-medidas th .adm-mini { font-family: var(--f-mono); font-size: 12px; font-weight: 700; text-transform: uppercase; }
 .adm-remover-mini { border: 0; background: none; cursor: pointer; color: var(--vinho); font-size: 20px; width: 36px; height: 36px; }
 
-/* ---------- login ---------- */
 .adm-login { min-height: 100vh; display: grid; place-items: center; background: var(--preto); padding: 16px; }
 .adm-login__caixa { background: var(--cru); width: min(420px, 100%); padding: 32px; display: flex; flex-direction: column; gap: 18px; }
 .adm-login__logo { height: 64px; width: auto; align-self: flex-start; }
 .adm-login__voltar { font-size: 14px; align-self: flex-start; padding: 8px 0; }
 
-/* ---------- celular ---------- */
 @media (max-width: 859px) {
   .adm { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
   .adm__lateral { position: static; height: auto; padding: 14px 16px; gap: 12px; }

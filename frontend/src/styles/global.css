@@ -1,10 +1,3 @@
-/* ==========================================================================
-   OPPE CLOTHING — base do sistema visual
-   Tokens do brand book: preto asfalto, cru, vermelho etiqueta.
-   Anton grita · Instrument Serif fala baixo · Space Grotesk explica · Space Mono etiqueta.
-   Cada componente traz o próprio CSS ao lado do .jsx; aqui fica só o que é comum.
-   ========================================================================== */
-
 :root {
   --preto: #0E0E0E;
   --cru: #F2EEE3;
@@ -64,7 +57,6 @@ h1, h2, h3, p { margin: 0; }
   clip: rect(0 0 0 0); white-space: nowrap; border: 0; padding: 0; margin: -1px;
 }
 
-/* ---------- Tipos ---------- */
 .eyebrow {
   font-family: var(--f-mono); font-size: 13px; letter-spacing: 0.14em;
   color: var(--vinho); text-transform: uppercase;
@@ -86,7 +78,6 @@ h1, h2, h3, p { margin: 0; }
 
 .aviso { margin-top: 40px; display: flex; flex-wrap: wrap; align-items: center; gap: 16px; font-size: 17px; color: var(--grafite); }
 
-/* ---------- Botões ---------- */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 10px;
   min-height: 44px; padding: 0 22px;
@@ -113,7 +104,6 @@ h1, h2, h3, p { margin: 0; }
 }
 .icon-btn:hover { background: var(--concreto); }
 
-/* ---------- Selo (etiqueta vermelha com o logo) ---------- */
 .selo { flex: none; background: var(--vermelho); display: flex; align-items: center; justify-content: center; }
 .selo img { width: 80%; height: auto; }
 .selo--72 { width: 72px; height: 72px; }
@@ -121,7 +111,6 @@ h1, h2, h3, p { margin: 0; }
 .selo--56 { width: 56px; height: 56px; }
 .selo--52 { width: 52px; height: 52px; }
 
-/* ---------- Diálogos ---------- */
 dialog { color: var(--preto); }
 dialog::backdrop { background: rgba(14, 14, 14, 0.55); }
 

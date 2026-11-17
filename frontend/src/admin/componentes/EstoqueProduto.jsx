@@ -7,10 +7,6 @@ const dataHora = (iso) => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'sh
 const campos = (estoque) => Object.fromEntries(estoque.tamanhos.map((t) => [t.tamanho, String(t.quantidade)]));
 const numeros = (estoque) => Object.fromEntries(estoque.tamanhos.map((t) => [t.tamanho, t.quantidade]));
 
-/**
- * Estoque da peça por tamanho. Ao salvar, manda também os números que estavam na tela:
- * se entrou um pedido nesse meio-tempo, o servidor avisa em vez de apagar a reserva.
- */
 export default function EstoqueProduto({ produto, onAtualizado }) {
   const [controla, setControla] = useState(produto.estoque.controla);
   const [valores, setValores] = useState(() => campos(produto.estoque));
@@ -19,21 +15,27 @@ export default function EstoqueProduto({ produto, onAtualizado }) {
   const [aviso, setAviso] = useState('');
   const [conflito, setConflito] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const [movimentos, setMovimentos] = useState(produto.movimentosEstoque ?? []);
 
   function aplicar(p) {
     onAtualizado(p);
     setControla(p.estoque.controla);
     setValores(campos(p.estoque));
     setAnteriores(numeros(p.estoque));
+    if (p.movimentosEstoque) setMovimentos(p.movimentosEstoque);
   }
 
   async function salvar(e) {
     e.preventDefault();
+    const quantidades = Object.fromEntries(Object.entries(valores).map(([t, v]) => [t, v === '' ? 0 : Number(v)]));
+    const tudoZerado = Object.values(quantidades).every((n) => n === 0);
+    const jaEstavaZerado = produto.estoque.controla && produto.estoque.total === 0;
+    if (controla && tudoZerado && !jaEstavaZerado
+      && !window.confirm('Com todas as quantidades em 0, a peça vai aparecer como ESGOTADA no site. Salvar assim?')) return;
     setSalvando(true);
     setMensagem('');
     setAviso('');
     setConflito(false);
-    const quantidades = Object.fromEntries(Object.entries(valores).map(([t, v]) => [t, v === '' ? 0 : Number(v)]));
     try {
       aplicar(await api.put(`/produtos/${produto.id}/estoque`, { controla, quantidades, anteriores }));
       setAviso('Estoque salvo.');
@@ -84,7 +86,7 @@ export default function EstoqueProduto({ produto, onAtualizado }) {
                 type="number"
                 inputMode="numeric"
                 min={0}
-                max={99999}
+                max={produto.estoque.maximo}
                 step={1}
                 value={valor}
                 onChange={(e) => setValores((v) => ({ ...v, [tamanho]: e.target.value }))}
@@ -99,7 +101,7 @@ export default function EstoqueProduto({ produto, onAtualizado }) {
         </div>
       </form>
 
-      {produto.movimentosEstoque.length > 0 && (
+      {movimentos.length > 0 && (
         <div className="adm-estoque__historico">
           <h3 className="adm-campo__ajuda">Últimas entradas e saídas</h3>
           <div className="adm-tabela-wrap">
@@ -115,7 +117,7 @@ export default function EstoqueProduto({ produto, onAtualizado }) {
                 </tr>
               </thead>
               <tbody>
-                {produto.movimentosEstoque.map((m, n) => (
+                {movimentos.map((m, n) => (
                   <tr key={n}>
                     <td style={{ whiteSpace: 'nowrap' }}>{dataHora(m.quando)}</td>
                     <td>{m.tamanho}</td>

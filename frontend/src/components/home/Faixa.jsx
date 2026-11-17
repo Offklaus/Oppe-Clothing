@@ -4,7 +4,6 @@ import './Faixa.css';
 
 const FRASES = ['Walk by faith', 'Not by sight', "It's never luck", "It's always God", 'Chaos also builds', 'I won again'];
 
-/** Faixa vermelha corrida com as frases da marca (o grupo se repete para o loop não ter emenda). */
 export default function Faixa({ frases = FRASES }) {
   const grupo = (chave) => (
     <div className="faixa__group" key={chave}>

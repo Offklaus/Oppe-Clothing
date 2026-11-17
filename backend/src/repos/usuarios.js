@@ -1,4 +1,3 @@
-// SQL dos administradores. senha_hash nunca sai deste módulo para as rotas.
 const PUBLICOS = 'id, nome, email, ativo, ultimo_login_em, criado_em, bloqueado_ate';
 
 export async function porEmailComHash(db, email) {
@@ -56,7 +55,6 @@ export async function definirSenha(db, id, senhaHash) {
   );
 }
 
-/** Conta a falha; ao chegar no limite, bloqueia por alguns minutos e zera o contador. */
 export async function registrarFalha(db, id, limite, minutos) {
   await db.query(
     `UPDATE usuarios_admin SET

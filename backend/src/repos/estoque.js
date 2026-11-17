@@ -1,4 +1,9 @@
-// Estoque por tamanho e o registro de entradas e saídas. Chamar dentro de uma transação.
+import { ESTOQUE_MAXIMO } from '../servicos/formatos.js';
+
+const compararTexto = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+
+export const ordenarParaTravar = (lista) =>
+  [...lista].sort((a, b) => a.produtoId - b.produtoId || compararTexto(a.tamanho, b.tamanho));
 
 async function registrar(db, { produtoId, tamanho, variacao, saldo, motivo, pedidoId = null, usuarioId = null }) {
   await db.query(
@@ -8,10 +13,6 @@ async function registrar(db, { produtoId, tamanho, variacao, saldo, motivo, pedi
   );
 }
 
-/**
- * Retira peças, mas só se houver o suficiente (numa única operação: dois pedidos ao mesmo tempo
- * não conseguem levar a mesma última peça). Devolve o novo saldo, ou null se faltou.
- */
 export async function retirar(db, { produtoId, tamanho, qtd, motivo, pedidoId = null, usuarioId = null }) {
   const { rows } = await db.query(
     `UPDATE estoque SET quantidade = quantidade - $3
@@ -24,16 +25,27 @@ export async function retirar(db, { produtoId, tamanho, qtd, motivo, pedidoId = 
   return rows[0].quantidade;
 }
 
-/** Devolve peças ao estoque (ex.: pedido cancelado). */
-export async function devolver(db, { produtoId, tamanho, qtd, motivo, pedidoId = null, usuarioId = null }) {
+export async function travar(db, produtoId, tamanho) {
   const { rows: [linha] } = await db.query(
-    `INSERT INTO estoque (produto_id, tamanho, quantidade) VALUES ($1, $2, $3)
-     ON CONFLICT (produto_id, tamanho) DO UPDATE SET quantidade = estoque.quantidade + EXCLUDED.quantidade
+    `INSERT INTO estoque (produto_id, tamanho, quantidade) VALUES ($1, $2, 0)
+     ON CONFLICT (produto_id, tamanho) DO UPDATE SET quantidade = estoque.quantidade
      RETURNING quantidade`,
-    [produtoId, tamanho, qtd]
+    [produtoId, tamanho]
   );
-  await registrar(db, { produtoId, tamanho, variacao: qtd, saldo: linha.quantidade, motivo, pedidoId, usuarioId });
   return linha.quantidade;
+}
+
+async function gravar(db, produtoId, tamanho, quantidade) {
+  await db.query('UPDATE estoque SET quantidade = $3 WHERE produto_id = $1 AND tamanho = $2', [produtoId, tamanho, quantidade]);
+}
+
+export async function devolver(db, { produtoId, tamanho, qtd, motivo, pedidoId = null, usuarioId = null }) {
+  const antes = await travar(db, produtoId, tamanho);
+  const saldo = Math.min(antes + qtd, ESTOQUE_MAXIMO);
+  if (saldo === antes) return saldo;
+  await gravar(db, produtoId, tamanho, saldo);
+  await registrar(db, { produtoId, tamanho, variacao: saldo - antes, saldo, motivo, pedidoId, usuarioId });
+  return saldo;
 }
 
 export async function quantidade(db, produtoId, tamanho) {
@@ -41,29 +53,16 @@ export async function quantidade(db, produtoId, tamanho) {
   return rows[0]?.quantidade ?? 0;
 }
 
-/** Quantidades atuais da peça, travadas até o fim da transação (ajuste no painel). */
-export async function travarDaPeca(db, produtoId) {
-  const { rows } = await db.query(
-    'SELECT tamanho, quantidade FROM estoque WHERE produto_id = $1 FOR UPDATE', [produtoId]
-  );
-  return Object.fromEntries(rows.map((r) => [r.tamanho, r.quantidade]));
-}
-
-/** Ajuste feito no painel: grava o número novo e registra a diferença. */
 export async function ajustar(db, { produtoId, tamanho, de, para, usuarioId }) {
-  await db.query(
-    `INSERT INTO estoque (produto_id, tamanho, quantidade) VALUES ($1, $2, $3)
-     ON CONFLICT (produto_id, tamanho) DO UPDATE SET quantidade = EXCLUDED.quantidade`,
-    [produtoId, tamanho, para]
-  );
-  if (para !== de) await registrar(db, { produtoId, tamanho, variacao: para - de, saldo: para, motivo: 'ajuste', usuarioId });
+  if (para === de) return;
+  await gravar(db, produtoId, tamanho, para);
+  await registrar(db, { produtoId, tamanho, variacao: para - de, saldo: para, motivo: 'ajuste', usuarioId });
 }
 
 export async function definirControle(db, produtoId, controla) {
   await db.query('UPDATE produtos SET controla_estoque = $2, atualizado_em = now() WHERE id = $1', [produtoId, controla]);
 }
 
-/** Últimas entradas e saídas da peça, com o pedido e quem ajustou. */
 export async function movimentos(db, produtoId, limite = 30) {
   const { rows } = await db.query(
     `SELECT m.tamanho, m.variacao, m.saldo, m.motivo, m.criado_em, m.pedido_id, p.codigo AS pedido_codigo,

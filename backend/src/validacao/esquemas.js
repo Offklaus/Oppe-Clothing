@@ -1,14 +1,12 @@
-// Esquemas de entrada do painel. Campos desconhecidos são recusados (strictObject).
 import { z } from 'zod';
 import { STATUS } from '../servicos/pedido.js';
-import { TELEFONE_BR, UFS, telefoneComPais } from '../servicos/formatos.js';
+import { ESTOQUE_MAXIMO, TELEFONE_BR, UFS, telefoneComPais } from '../servicos/formatos.js';
 
 const texto = (max, rotulo) => z.string({ error: `${rotulo}: valor inválido.` }).trim().max(max, `${rotulo}: no máximo ${max} caracteres.`);
 const obrigatorio = (max, rotulo) => texto(max, rotulo).min(1, `Preencha: ${rotulo.toLowerCase()}.`);
 const opcional = (max, rotulo) => texto(max, rotulo).default('');
 const slugOpcional = z.string().trim().toLowerCase().max(80, 'Endereço: no máximo 80 caracteres.')
   .regex(/^([a-z0-9]+(-[a-z0-9]+)*)?$/, 'Endereço: use só letras minúsculas, números e hífen.').optional();
-// preço chega como texto ("129,90"); a conversão para centavos acontece no serviço
 const preco = z.union([z.string().max(20, 'Preço inválido.'), z.number(), z.null()]).optional();
 const ordem = z.number({ error: 'Ordem: use um número inteiro.' }).int('Ordem: use um número inteiro.').min(0).max(9999).default(0);
 const idOpcional = z.number().int().positive().nullable().default(null);
@@ -96,12 +94,10 @@ export const esquemaNovaSenha = z.strictObject({ novaSenha: z.string().max(128) 
 const STATUS_PEDIDO = Object.keys(STATUS);
 const soNumeros = (s) => s.replace(/\D/g, '');
 
-/** "(35) 99999-9999", "35999999999" ou "+55 35 99999-9999" → "5535999999999" (mesma regra do WhatsApp da loja). */
 const telefone = z.string({ error: 'Telefone inválido.' }).max(30, 'Telefone inválido.')
   .transform(telefoneComPais)
   .refine((d) => TELEFONE_BR.test(d), 'Telefone: informe DDD + número, ex.: (35) 99999-9999.');
 
-/** Dados que o cliente informa antes de abrir o WhatsApp (vão só para o painel). */
 export const esquemaCliente = z.strictObject({
   nome: obrigatorio(80, 'Nome').refine((n) => n.split(/\s+/).length >= 2, 'Nome: escreva nome e sobrenome.'),
   email,
@@ -116,10 +112,6 @@ export const esquemaCliente = z.strictObject({
   uf: z.string({ error: 'Escolha o estado.' }).trim().toUpperCase().pipe(z.enum(UFS, { error: 'Escolha o estado.' }))
 });
 
-/**
- * Alteração de pedido no painel: só os campos enviados mudam.
- * "cliente" corrige nome, contato e endereço (todos juntos, com as mesmas regras do site).
- */
 export const esquemaPedido = z.strictObject({
   status: z.enum(STATUS_PEDIDO, { error: 'Escolha uma situação válida.' }).optional(),
   rastreio: texto(60, 'Código de rastreio').optional(),
@@ -127,13 +119,11 @@ export const esquemaPedido = z.strictObject({
   cliente: esquemaCliente.optional()
 });
 
-/** Filtros da lista de pedidos (vêm da URL; valor estranho vira "sem filtro"). */
 export const esquemaFiltroPedidos = z.object({
   status: z.enum(STATUS_PEDIDO).optional().catch(undefined),
   busca: z.string().trim().max(40).optional().catch(undefined)
 });
 
-/** Novo pedido vindo da sacola. A chave (gerada no site) evita pedido repetido. */
 export const esquemaNovoPedido = z.strictObject({
   chave: z.uuid({ error: 'Pedido inválido. Recarregue a página e tente de novo.' }),
   itens: z.array(z.unknown(), { error: 'Pedido inválido.' }).max(50, 'Pedido grande demais.'),
@@ -141,28 +131,22 @@ export const esquemaNovoPedido = z.strictObject({
 });
 
 const quantidadeEstoque = z.number({ error: 'Quantidade: use um número inteiro.' })
-  .int('Quantidade: use um número inteiro.').min(0, 'Quantidade não pode ser negativa.').max(99999, 'Quantidade: no máximo 99999.');
+  .int('Quantidade: use um número inteiro.').min(0, 'Quantidade não pode ser negativa.')
+  .max(ESTOQUE_MAXIMO, `Quantidade: no máximo ${ESTOQUE_MAXIMO}.`);
 const porTamanho = z.record(z.string().trim().min(1).max(8), quantidadeEstoque, { error: 'Quantidades inválidas.' });
 
-/**
- * Ajuste de estoque no painel: quantidade de cada tamanho e os números que estavam na tela
- * (se mudaram nesse meio-tempo, o servidor não grava).
- */
 export const esquemaEstoque = z.strictObject({
   controla: z.boolean({ error: 'Informe se a peça controla estoque.' }),
   quantidades: porTamanho,
   anteriores: porTamanho.optional()
 });
 
-/** Consulta pública: só o código. */
 export const esquemaConsulta = z.strictObject({
   codigo: z.string({ error: 'Informe o código do pedido.' }).trim().min(1, 'Informe o código do pedido.').max(40, 'Código inválido.')
 });
 
-// ids do banco são "integer": acima disso a consulta falharia com erro interno
 export const idNumerico = z.coerce.number().int().positive().max(2_147_483_647);
 
-/** Usado para decidir se um texto pode ser gravado no registro como e-mail. */
 export const pareceEmail = (texto) => z.email().max(254).safeParse(texto).success;
 export const idUuid = z.uuid();
 export const posicaoImagem = z.coerce.number().int().min(0).max(1);

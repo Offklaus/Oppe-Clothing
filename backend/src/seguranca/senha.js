@@ -1,4 +1,3 @@
-// Senhas: hash Argon2id (recomendação OWASP) e política mínima.
 import argon2 from 'argon2';
 import { randomBytes } from 'node:crypto';
 
@@ -24,8 +23,6 @@ export async function conferir(hash, senha) {
 
 export const precisaRehash = (hash) => argon2.needsRehash(hash, OPCOES);
 
-// Usado quando o e-mail não existe: gasta o mesmo tempo de uma verificação real,
-// para que ninguém descubra quais e-mails estão cadastrados medindo o tempo de resposta.
 let hashFalso;
 export async function conferirFalso(senha) {
   hashFalso ??= await argon2.hash(randomBytes(32).toString('hex'), OPCOES);
@@ -33,7 +30,6 @@ export async function conferirFalso(senha) {
   return false;
 }
 
-/** Devolve a mensagem do problema, ou null se a senha for aceitável. */
 export function problemaNaSenha(senha, { email = '' } = {}) {
   if (typeof senha !== 'string' || senha.length < TAMANHO_MINIMO) return `Use pelo menos ${TAMANHO_MINIMO} caracteres.`;
   if (senha.length > TAMANHO_MAXIMO) return `Use no máximo ${TAMANHO_MAXIMO} caracteres.`;

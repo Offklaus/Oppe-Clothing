@@ -3,7 +3,6 @@ import { Link } from 'react-router';
 import { useLoja } from '../../context/LojaContext.jsx';
 import './ColecaoDestaque.css';
 
-/** Faixa preta com a coleção escolhida no painel (Loja → Coleção em destaque). */
 export default function ColecaoDestaque() {
   const { loja } = useLoja();
   const destaque = loja?.colecaoDestaque;
@@ -26,6 +25,7 @@ export default function ColecaoDestaque() {
           {destaque.produtos.map((p) => (
             <Link key={p.id} className="colecao__img" to={`/produto/${p.id}`}>
               <img src={p.faces[0].img} alt={`Camiseta ${p.nome}, ${p.faces[0].lado.toLowerCase()}`} width="1000" height="1000" loading="lazy" />
+              {p.esgotado && <span className="colecao__esgotado">ESGOTADO</span>}
             </Link>
           ))}
         </div>

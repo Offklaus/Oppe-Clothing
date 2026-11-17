@@ -29,7 +29,6 @@ export default function ProdutoPage() {
   }
   if (!produto) return <div className="container produto"><p className="aviso">Carregando a peça…</p></div>;
 
-  // key: ao ir de uma peça para outra, o tamanho escolhido zera
   return <DetalheProduto key={produto.id} produto={produto} />;
 }
 
@@ -96,7 +95,6 @@ function DetalheProduto({ produto }) {
               <button
                 type="button"
                 className="btn btn--dark btn--xl btn--block"
-                // garante a peça sem somar outra unidade; o formulário mostra tudo o que vai no pedido
                 onClick={() => { if (exigirTamanho()) { garantir(produto.id, tamanho); abrir('dados'); } }}
               >
                 <Estrela tamanho={16} cor="#E01E14" />

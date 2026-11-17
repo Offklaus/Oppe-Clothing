@@ -7,20 +7,14 @@ import Estrela from '../ui/Estrela.jsx';
 const VAZIO = { nome: '', email: '', telefone: '', cep: '', logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', uf: '' };
 const ORDEM_CAMPOS = Object.keys(VAZIO);
 
-/**
- * Etapa "seus dados": nome, contato e endereço de entrega.
- * Quem valida e normaliza é o servidor; aqui só mostramos o erro de cada campo.
- */
 export default function FinalizarPedido({ itens, previa, onVoltar, onCriado }) {
   const id = useId();
   const { loja } = useLoja();
   const { rascunho, setRascunho } = useSacola();
-  // volta com o que o cliente já tinha digitado se a gaveta foi fechada no meio
   const [form, setForm] = useState(() => ({ ...VAZIO, ...(rascunho ?? {}) }));
   const [erros, setErros] = useState({});
   const [mensagem, setMensagem] = useState('');
   const [enviando, setEnviando] = useState(false);
-  // uma chave por tentativa de finalizar: clique duplo (ou repetir após falha de rede) cai no mesmo pedido
   const [chave] = useState(novaChavePedido);
   const refForm = useRef(null);
 
@@ -28,7 +22,6 @@ export default function FinalizarPedido({ itens, previa, onVoltar, onCriado }) {
 
   const mudar = (campo) => (e) => setForm((f) => ({ ...f, [campo]: e.target.value }));
 
-  // leva o foco ao primeiro campo com problema
   useEffect(() => {
     const primeiro = ORDEM_CAMPOS.find((c) => erros[c]);
     if (primeiro) refForm.current?.querySelector(`[name="${primeiro}"]`)?.focus();
@@ -43,7 +36,6 @@ export default function FinalizarPedido({ itens, previa, onVoltar, onCriado }) {
     try {
       onCriado(await criarPedido({ chave, itens, cliente: form }));
     } catch (falha) {
-      // erro de um campo do formulário fica no campo; qualquer outro (peças, chave…) aparece por extenso
       const doFormulario = {};
       const outros = [];
       for (const [campo, texto] of Object.entries(falha.campos ?? {})) {
@@ -140,7 +132,6 @@ export default function FinalizarPedido({ itens, previa, onVoltar, onCriado }) {
   );
 }
 
-/** Campo com rótulo e o erro que veio do servidor (ligado ao campo para leitores de tela). */
 function Campo({ id, name, rotulo, erro, opcional = false, className = '', children, ...props }) {
   const idErro = `${id}-erro`;
   const ligacao = { id, name, 'aria-invalid': erro ? true : undefined, 'aria-describedby': erro ? idErro : undefined };

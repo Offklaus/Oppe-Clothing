@@ -1,7 +1,6 @@
 import { Link } from 'react-router';
 import ProdutoGrid from './ProdutoGrid.jsx';
 
-/** "Combina com": a escolha das peças é feita pelo servidor. */
 export default function Relacionados({ produtos }) {
   if (!produtos?.length) return null;
   return (

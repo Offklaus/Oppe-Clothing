@@ -11,10 +11,6 @@ import { origemDasFotos } from './servicos/armazenamento.js';
 import { rotasPublicas } from './rotas/publico.js';
 import { rotasAdmin } from './rotas/admin.js';
 
-/**
- * ctx = { pool, config, limiteLogin?, limiteApi? }
- * Se existir o build do Vite (frontend/dist), o Express também serve o site.
- */
 export function criarApp(ctx) {
   const { config } = ctx;
   const app = express();
@@ -40,8 +36,6 @@ export function criarApp(ctx) {
     },
     strictTransportSecurity: config.producao ? undefined : false
   }));
-  // IP real do visitante vindo do cabeçalho do proxy (ex.: CF-Connecting-IP no Render).
-  // Vale para os limites de tentativas e para o registro de atividade.
   if (config.cabecalhoIp) {
     app.use((req, res, next) => {
       const ip = String(req.get(config.cabecalhoIp) ?? '').trim();
@@ -60,7 +54,6 @@ export function criarApp(ctx) {
   const dist = config.pastaFrontend;
   if (dist && existsSync(path.join(dist, 'index.html'))) {
     app.use(express.static(dist, { index: false, maxAge: '1h' }));
-    // qualquer outra rota GET é do React Router (ex.: /produto/i-won-again, /admin)
     app.use((req, res, next) => {
       if (req.method !== 'GET' || req.path.startsWith('/api') || req.path.startsWith('/images')) return next();
       res.sendFile(path.join(dist, 'index.html'));
@@ -69,7 +62,6 @@ export function criarApp(ctx) {
 
   app.use((req, res) => res.status(404).json({ erro: 'Não encontrado.' }));
 
-  // eslint-disable-next-line no-unused-vars
   app.use((erro, req, res, next) => {
     let status = 500;
     let corpo = { erro: 'Erro interno. Tente de novo em instantes.' };

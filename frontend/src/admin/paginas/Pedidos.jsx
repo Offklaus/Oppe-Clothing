@@ -5,7 +5,6 @@ import { Alerta, Cabecalho } from '../componentes/Campo.jsx';
 
 const dataHora = (iso) => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 
-/** Lista de pedidos. Filtro e busca ficam na URL (o Início linka direto para "novos"). */
 export default function Pedidos() {
   const [params, setParams] = useSearchParams();
   const status = params.get('status') ?? '';

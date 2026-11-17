@@ -1,4 +1,3 @@
-// Rotas do site (sem login).
 import { Router } from 'express';
 import { validar } from '../erros.js';
 import { exigirOrigem, limitador, semCache } from '../seguranca/middlewares.js';
@@ -31,20 +30,16 @@ export function rotasPublicas({ pool, config }) {
     res.json(await catalogo.detalheParaSite(pool, texto(req.params.slug, 80)));
   });
 
-  // a sacola manda { itens: [{ id, tamanho, qtd }] } e recebe tudo calculado
   r.post('/pedidos/previa', limitePedidos, async (req, res) => {
     res.json(await pedido.previa(pool, req.body?.itens));
   });
 
-  // Finalizar pedido: peças + dados do cliente. Os dados pessoais vão no corpo (nunca na URL),
-  // e só o próprio site pode enviar (Origin conferido; um site de terceiros não cria pedido falso).
   r.post('/pedidos', semCache, exigirOrigem(config.origensPermitidas), limitePedidos, limiteNovosPedidos, async (req, res) => {
     const dados = validar(esquemaNovoPedido, req.body);
     const criado = await pedido.criarPedido(pool, dados, config);
     res.status(criado.novo ? 201 : 200).json(criado);
   });
 
-  // Acompanhar pedido: o código vai no corpo para não ficar em históricos e registros de acesso.
   r.post('/pedidos/consulta', semCache, limiteConsultas, async (req, res) => {
     const { codigo } = validar(esquemaConsulta, req.body);
     res.json(await pedido.consultarPedido(pool, codigo));

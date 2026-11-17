@@ -1,4 +1,3 @@
-// Utilidades dos testes: banco de testes limpo, servidor numa porta livre e cliente do painel.
 import { config } from '../src/config.js';
 import { criarPool } from '../src/db/pool.js';
 import { migrar } from '../src/db/migrar.js';
@@ -35,13 +34,11 @@ export async function subirServidor(pool, { config: ajustes = {}, limiteLogin = 
   };
 }
 
-/** Dados de entrega válidos (fictícios) para criar pedidos nos testes. */
 export const CLIENTE_TESTE = Object.freeze({
   nome: 'Maria Teste', email: 'maria@exemplo.com', telefone: '(35) 99999-0000', cep: '37500-000',
   logradouro: 'Rua das Flores', numero: '100', complemento: 'Apto 2', bairro: 'Centro', cidade: 'Itajubá', uf: 'MG'
 });
 
-/** Faz um pedido como o site faz (POST com Origin do site). */
 export function fazerPedido(base, itens, { chave = crypto.randomUUID(), cliente = CLIENTE_TESTE, origem = ORIGEM } = {}) {
   return fetch(`${base}/api/pedidos`, {
     method: 'POST',
@@ -50,14 +47,12 @@ export function fazerPedido(base, itens, { chave = crypto.randomUUID(), cliente 
   });
 }
 
-/** Consulta pública pelo código. */
 export function consultarPedido(base, codigo) {
   return fetch(`${base}/api/pedidos/consulta`, {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ codigo })
   });
 }
 
-/** Cliente do painel que guarda o cookie de sessão, como um navegador. */
 export function clienteAdmin(base) {
   let cookie = '';
   async function pedir(metodo, caminho, corpo, { formulario } = {}) {

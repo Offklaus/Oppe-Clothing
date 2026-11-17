@@ -1,4 +1,3 @@
-// SQL das peças e das fotos.
 const SELECT_BASE = `
   SELECT p.*, c.slug AS colecao_slug, c.nome AS colecao_nome, c.chamada AS colecao_chamada,
          c.ativa AS colecao_ativa, c.ordem AS colecao_ordem,
@@ -8,7 +7,6 @@ const SELECT_BASE = `
          COALESCE((SELECT json_object_agg(e.tamanho, e.quantidade) FROM estoque e WHERE e.produto_id = p.id), '{}'::json) AS estoque
     FROM produtos p JOIN colecoes c ON c.id = p.colecao_id`;
 
-// Regra de visibilidade no site: peça ativa, coleção ativa e com foto principal.
 const VISIVEL = `p.ativo AND c.ativa AND EXISTS (SELECT 1 FROM produto_imagens i WHERE i.produto_id = p.id AND i.posicao = 0)`;
 const ORDEM = 'ORDER BY c.ordem, p.ordem, p.id';
 
@@ -40,6 +38,11 @@ export async function porId(db, id) {
   return rows[0] ?? null;
 }
 
+export async function dadosDoEstoque(db, id) {
+  const { rows } = await db.query('SELECT id, nome, cor, controla_estoque FROM produtos WHERE id = $1', [id]);
+  return rows[0] ?? null;
+}
+
 export async function slugEmUso(db, slug, excetoId = null) {
   const { rows } = await db.query('SELECT 1 FROM produtos WHERE slug = $1 AND ($2::int IS NULL OR id <> $2)', [slug, excetoId]);
   return rows.length > 0;
@@ -63,14 +66,12 @@ export async function atualizar(db, id, p) {
   );
 }
 
-/** Remove a peça e devolve os arquivos de foto que ela usava. */
 export async function remover(db, id) {
   const { rows } = await db.query('SELECT arquivo FROM produto_imagens WHERE produto_id = $1', [id]);
   await db.query('DELETE FROM produtos WHERE id = $1', [id]);
   return rows.map((r) => r.arquivo);
 }
 
-/** Grava a foto na posição e devolve o arquivo anterior (ou null). */
 export async function definirImagem(db, produtoId, posicao, arquivo, lado) {
   const { rows } = await db.query('SELECT arquivo FROM produto_imagens WHERE produto_id = $1 AND posicao = $2', [produtoId, posicao]);
   await db.query(

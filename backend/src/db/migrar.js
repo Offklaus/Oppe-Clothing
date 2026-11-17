@@ -1,8 +1,7 @@
-// Aplica, em ordem, os arquivos de backend/migrations que ainda não rodaram.
 import { readdir, readFile } from 'node:fs/promises';
 
 const PASTA = new URL('../../migrations/', import.meta.url);
-const TRAVA = 727274; // pg_advisory_lock: impede duas migrações ao mesmo tempo
+const TRAVA = 727274;
 
 export async function migrar(pool) {
   const cliente = await pool.connect();

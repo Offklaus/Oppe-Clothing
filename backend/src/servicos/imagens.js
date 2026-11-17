@@ -1,5 +1,3 @@
-// Fotos das peças. Todo envio é reprocessado: vira WebP 1000×1000, sem metadados,
-// com nome aleatório. O arquivo original nunca é gravado como chegou.
 import sharp from 'sharp';
 import { randomUUID } from 'node:crypto';
 import * as repoProdutos from '../repos/produtos.js';
@@ -34,7 +32,6 @@ async function processarESalvar(buffer) {
   return arquivo;
 }
 
-/** Apaga uma foto enviada pelo painel se nenhuma peça usa mais. As fotos originais do catálogo ficam. */
 export async function apagarSeSemUso(db, arquivo) {
   if (!ehArquivoDeEnvio(arquivo)) return;
   if (await repoProdutos.arquivoEmUso(db, arquivo)) return;

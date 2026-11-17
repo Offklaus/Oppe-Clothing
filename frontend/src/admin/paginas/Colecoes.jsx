@@ -6,7 +6,7 @@ const VAZIA = { nome: '', chamada: '', frase: '', descricao: '', ordem: 0, ativa
 
 export default function Colecoes() {
   const { dados, erro, carregando, recarregar } = useCarregar('/colecoes');
-  const [editando, setEditando] = useState(null); // null | 'nova' | id
+  const [editando, setEditando] = useState(null);
   const [form, setForm] = useState(VAZIA);
   const [erros, setErros] = useState({});
   const [mensagem, setMensagem] = useState('');

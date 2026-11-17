@@ -1,12 +1,7 @@
--- Oppe Clothing — esquema inicial
--- Datas sempre em timestamptz (UTC). Dinheiro sempre em centavos (integer).
-
--- ---------- Administração ----------
 CREATE TABLE usuarios_admin (
   id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   nome              text NOT NULL CHECK (char_length(nome) BETWEEN 2 AND 80),
   email             text NOT NULL CHECK (email = lower(email) AND char_length(email) BETWEEN 3 AND 254),
-  -- só o hash Argon2id é guardado; a senha em texto nunca chega ao banco
   senha_hash        text NOT NULL CHECK (senha_hash LIKE '$argon2id$%'),
   ativo             boolean NOT NULL DEFAULT true,
   tentativas_falhas integer NOT NULL DEFAULT 0 CHECK (tentativas_falhas >= 0),
@@ -21,7 +16,6 @@ CREATE UNIQUE INDEX usuarios_admin_email_un ON usuarios_admin (email);
 CREATE TABLE sessoes_admin (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   usuario_id    uuid NOT NULL REFERENCES usuarios_admin (id) ON DELETE CASCADE,
-  -- sha256 do token do cookie; o token em si nunca é guardado
   token_hash    bytea NOT NULL UNIQUE,
   criada_em     timestamptz NOT NULL DEFAULT now(),
   ultimo_uso_em timestamptz NOT NULL DEFAULT now(),
@@ -45,7 +39,6 @@ CREATE TABLE auditoria (
 );
 CREATE INDEX auditoria_criado_idx ON auditoria (criado_em DESC);
 
--- ---------- Catálogo ----------
 CREATE TABLE colecoes (
   id            serial PRIMARY KEY,
   slug          text NOT NULL UNIQUE CHECK (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$' AND char_length(slug) <= 80),
@@ -79,7 +72,6 @@ CREATE TABLE produtos (
 );
 CREATE INDEX produtos_colecao_idx ON produtos (colecao_id);
 
--- posição 0 = foto principal, 1 = o outro lado
 CREATE TABLE produto_imagens (
   produto_id integer NOT NULL REFERENCES produtos (id) ON DELETE CASCADE,
   posicao    smallint NOT NULL CHECK (posicao IN (0, 1)),
@@ -89,7 +81,6 @@ CREATE TABLE produto_imagens (
 );
 CREATE INDEX produto_imagens_arquivo_idx ON produto_imagens (arquivo);
 
--- ---------- Loja (linha única) ----------
 CREATE TABLE configuracoes_loja (
   id                    boolean PRIMARY KEY DEFAULT true CHECK (id),
   whatsapp_numero       text NOT NULL DEFAULT '' CHECK (whatsapp_numero ~ '^([0-9]{12,15})?$'),

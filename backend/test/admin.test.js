@@ -220,7 +220,6 @@ test('configuração: sem TRUST_PROXY não confia em X-Forwarded-For; cookie Sec
   assert.equal(montarConfig({ SITE_URL: 'http://localhost:5173' }).cookieSeguro, false);
   assert.equal(montarConfig({ TRUST_PROXY: '1' }).trustProxy, 1);
   assert.equal(montarConfig({ TRUST_PROXY: 'loopback' }).trustProxy, 'loopback');
-  // IP do visitante: no Render vem do CF-Connecting-IP (gravado pela Cloudflare); fora dele, da conexão
   assert.equal(montarConfig({ RENDER: 'true' }).cabecalhoIp, 'cf-connecting-ip');
   assert.equal(montarConfig({}).cabecalhoIp, '');
   assert.equal(montarConfig({ RENDER: 'true', CLIENT_IP_HEADER: 'nenhum' }).cabecalhoIp, '');
@@ -325,7 +324,6 @@ test('pedidos: o painel lista, filtra, mostra os dados do cliente e atualiza o a
   assert.deepEqual(detalhe.opcoesStatus.map((o) => o.valor), ['novo', 'pago', 'em_preparacao', 'enviado', 'entregue', 'cancelado']);
   assert.equal(detalhe.historico.length, 1);
 
-  // andamento: pago → em preparação → enviado (com rastreio); o cliente vê cada etapa
   const mudar = (corpo) => admin.pedir('PUT', `/pedidos/${feito.id}`, corpo);
   const pago = await mudar({ status: 'pago', observacao: '  Pix recebido  ' });
   assert.equal(pago.status, 200);
@@ -403,6 +401,59 @@ test('pedidos: o painel corrige os dados de entrega, com as mesmas regras do sit
 
   const atividade = (await admin.pedir('GET', '/auditoria')).corpo;
   assert.ok(atividade.some((a) => a.descricao === `atualizou o pedido #${codigo} (dados de entrega)`));
+});
+
+test('pedidos: a loja apaga os dados do cliente de pedido entregue ou cancelado', async () => {
+  const cliente = {
+    nome: 'Joana Apagar', email: 'joana.apagar@exemplo.com', telefone: '(35) 98888-1111', cep: '37500-111',
+    logradouro: 'Rua Um', numero: '1', complemento: 'Casa B', bairro: 'Centro', cidade: 'Itajubá', uf: 'MG'
+  };
+  const { codigo } = await (await fazerPedido(srv.base, [{ id: 'drip', tamanho: 'M', qtd: 1 }], { cliente })).json();
+  const id = (await admin.pedir('GET', `/pedidos?busca=${encodeURIComponent(codigo)}`)).corpo.pedidos[0].id;
+  const apagar = () => admin.pedir('POST', `/pedidos/${id}/apagar-dados`);
+
+  const antes = (await admin.pedir('GET', `/pedidos/${id}`)).corpo;
+  assert.deepEqual(antes.apagarDados, { pode: false, ajuda: 'Disponível quando o pedido estiver entregue ou cancelado.' });
+  const cedo = await apagar();
+  assert.equal(cedo.status, 409);
+  assert.match(cedo.corpo.erro, /entregue ou cancelado/);
+
+  await admin.pedir('PUT', `/pedidos/${id}`, { status: 'entregue', rastreio: 'AA123456789BR', observacao: 'Pix da Joana' });
+  assert.equal((await admin.pedir('GET', `/pedidos/${id}`)).corpo.apagarDados.pode, true);
+  const ok = await apagar();
+  assert.equal(ok.status, 200);
+  assert.ok(ok.corpo.dadosApagadosEm);
+  assert.equal(ok.corpo.apagarDados, null);
+  assert.equal(ok.corpo.clienteEdicao, null);
+  assert.equal(ok.corpo.cliente.nome, '');
+  assert.equal(ok.corpo.cliente.email, '');
+  assert.equal(ok.corpo.cliente.linkWhatsapp, null);
+  assert.deepEqual(ok.corpo.cliente.endereco, []);
+  assert.equal(ok.corpo.mensagem, '');
+  assert.equal(ok.corpo.rastreio, '');
+  assert.equal(ok.corpo.observacao, '');
+  assert.equal(ok.corpo.statusRotulo, 'Entregue');
+  assert.equal(ok.corpo.itens.length, 1);
+
+  const { rows: [linha] } = await pool.query('SELECT * FROM pedidos WHERE id = $1', [id]);
+  const guardado = JSON.stringify(linha);
+  for (const dado of ['Joana', 'joana.apagar', '5535988881111', '37500111', 'Rua Um', 'Casa B', 'Pix', 'AA123456789BR']) {
+    assert.ok(!guardado.includes(dado), `${dado} continua no banco`);
+  }
+
+  assert.equal((await admin.pedir('GET', '/pedidos?busca=Joana')).corpo.pedidos.length, 0);
+  const naLista = (await admin.pedir('GET', '/pedidos?status=entregue')).corpo.pedidos.find((p) => p.id === id);
+  assert.equal(naLista.cliente, 'Dados apagados');
+  assert.equal((await (await consultarPedido(srv.base, codigo)).json()).statusRotulo, 'Entregue');
+
+  assert.equal((await apagar()).status, 409, 'não apaga duas vezes');
+  const preencher = await admin.pedir('PUT', `/pedidos/${id}`, { cliente });
+  assert.equal(preencher.status, 409);
+  assert.equal((await clienteAdmin(srv.base).pedir('POST', `/pedidos/${id}/apagar-dados`)).status, 401);
+
+  const atividade = (await admin.pedir('GET', '/auditoria')).corpo;
+  assert.ok(atividade.some((a) => a.descricao === `apagou os dados do cliente do pedido #${codigo}`));
+  assert.ok(!JSON.stringify(atividade).includes('Joana'));
 });
 
 test('no Render, cada visitante tem o próprio limite (IP do CF-Connecting-IP), e o X-Forwarded-For não engana', async () => {

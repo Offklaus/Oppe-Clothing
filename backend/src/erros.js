@@ -1,4 +1,3 @@
-// Erros que podem ser mostrados ao usuário. Qualquer outro erro vira "Erro interno".
 export class ErroHttp extends Error {
   constructor(status, mensagem, campos) {
     super(mensagem);
@@ -10,7 +9,6 @@ export class ErroHttp extends Error {
 
 export const naoEncontrado = (oque = 'Registro') => new ErroHttp(404, `${oque} não encontrado.`);
 
-/** Valida com um esquema zod; em caso de erro devolve 400 com a mensagem de cada campo. */
 export function validar(esquema, dados) {
   const resultado = esquema.safeParse(dados);
   if (resultado.success) return resultado.data;

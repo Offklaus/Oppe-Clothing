@@ -1,4 +1,3 @@
-// SQL das coleções. Sempre com parâmetros ($1, $2...), nunca concatenando valores.
 const CAMPOS = 'c.id, c.slug, c.nome, c.chamada, c.frase, c.descricao, c.ordem, c.ativa';
 
 export async function listarTodas(db) {
@@ -10,7 +9,6 @@ export async function listarTodas(db) {
   return rows;
 }
 
-/** Coleções que aparecem no site: ativas e com pelo menos uma peça visível. */
 export async function listarVisiveis(db) {
   const { rows } = await db.query(
     `SELECT ${CAMPOS} FROM colecoes c

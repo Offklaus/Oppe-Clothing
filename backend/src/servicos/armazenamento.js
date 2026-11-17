@@ -1,7 +1,3 @@
-// Onde ficam as fotos enviadas pelo painel.
-// - local (desenvolvimento): backend/public/images/produtos, servidas pelo próprio Express;
-// - supabase (produção): bucket público do Supabase Storage, que não some a cada deploy.
-// As fotos originais do catálogo (camisetas/...) continuam no repositório, servidas pelo site.
 import { mkdir, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { config } from '../config.js';
@@ -10,7 +6,6 @@ import { ErroHttp } from '../erros.js';
 export const PREFIXO_ENVIOS = 'produtos/';
 const ARQUIVO_DE_ENVIO = /^produtos\/[a-z0-9-]+\.webp$/;
 
-/** Só arquivos enviados pelo painel podem ser gravados ou apagados. */
 export const ehArquivoDeEnvio = (arquivo) => ARQUIVO_DE_ENVIO.test(String(arquivo ?? ''));
 
 function exigirEnvio(arquivo) {
@@ -37,14 +32,10 @@ export function armazenamentoLocal(pastaImagens) {
   };
 }
 
-/**
- * chave = chave secreta do projeto (sb_secret_... ou a antiga service_role).
- * Ela só existe no servidor; o site nunca a recebe.
- */
 export function armazenamentoSupabase({ url, chave, bucket, buscar = fetch }) {
   const base = url.replace(/\/+$/, '');
   const cabecalhos = { apikey: chave };
-  if (chave.startsWith('eyJ')) cabecalhos.authorization = `Bearer ${chave}`; // chave antiga (JWT)
+  if (chave.startsWith('eyJ')) cabecalhos.authorization = `Bearer ${chave}`;
   const objeto = (arquivo) => arquivo.slice(PREFIXO_ENVIOS.length);
   const endereco = (arquivo) => `${base}/storage/v1/object/${bucket}/${objeto(arquivo)}`;
 
@@ -91,17 +82,14 @@ let atual = criarPadrao(config);
 
 export const armazenamento = () => atual;
 
-/** Troca o armazenamento (usado nos testes). */
 export function usarArmazenamento(novo) {
   atual = novo;
 }
 
-/** URL pública da foto: as originais ficam no próprio site; as enviadas, no armazenamento. */
 export function urlDaImagem(arquivo) {
   return arquivo.startsWith(PREFIXO_ENVIOS) ? atual.url(arquivo) : `/images/${arquivo}`;
 }
 
-/** Origem das fotos enviadas, para liberar no Content-Security-Policy (null se forem do próprio site). */
 export function origemDasFotos() {
   if (atual.tipo !== 'supabase') return null;
   return new URL(atual.url(`${PREFIXO_ENVIOS}x.webp`)).origin;

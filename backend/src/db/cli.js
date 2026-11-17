@@ -1,4 +1,3 @@
-// npm run db:migrar | db:semear | db:preparar   (acrescente --teste para o banco de testes)
 import { config } from '../config.js';
 import { criarPool } from './pool.js';
 import { migrar } from './migrar.js';

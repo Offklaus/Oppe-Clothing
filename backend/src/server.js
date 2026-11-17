@@ -14,8 +14,6 @@ console.log(`Fotos: ${await armazenamento().verificar()}`);
 
 const { rows: [{ admins }] } = await pool.query('SELECT count(*)::int AS admins FROM usuarios_admin WHERE ativo');
 
-// em dev a porta vem do script (--porta=3001), para não brigar com a PORT do Vite;
-// em produção a hospedagem define PORT.
 const argPorta = process.argv.find((a) => a.startsWith('--porta='))?.split('=')[1];
 const porta = Number(argPorta) || Number(process.env.PORT) || 3001;
 

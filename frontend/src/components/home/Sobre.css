@@ -5,7 +5,7 @@
 .sobre__title { display: flex; flex-direction: column; gap: 14px; font-weight: 400; }
 .sobre__grito { display: block; font-size: clamp(36px, 4vw, 60px); line-height: 0.92; }
 .sobre__frase { display: block; font-size: clamp(24px, 2.3vw, 34px); line-height: 1.15; }
-.sobre__quebra { display: none; } /* só quebra depois da vírgula no celular */
+.sobre__quebra { display: none; }
 .sobre__text { font-size: 18px; line-height: 1.6; color: var(--grafite); max-width: 560px; }
 .sobre__list {
   list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px 28px;

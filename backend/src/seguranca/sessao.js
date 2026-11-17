@@ -1,14 +1,12 @@
-// Sessões do painel: token aleatório de 256 bits no cookie; no banco fica só o sha256 dele.
 import { createHash, randomBytes } from 'node:crypto';
 
 export const COOKIE_SESSAO = 'oppe_sessao';
-export const OCIOSA_MS = 2 * 60 * 60 * 1000;     // 2h sem uso encerra a sessão
-export const ABSOLUTA_MS = 12 * 60 * 60 * 1000;  // 12h no máximo, mesmo em uso
+export const OCIOSA_MS = 2 * 60 * 60 * 1000;
+export const ABSOLUTA_MS = 12 * 60 * 60 * 1000;
 
 const FORMATO_TOKEN = /^[A-Za-z0-9_-]{43}$/;
 const hashToken = (token) => createHash('sha256').update(token).digest();
 
-/** seguro = true: o navegador só envia o cookie por HTTPS (config.cookieSeguro). */
 export function opcoesCookie(seguro) {
   return { httpOnly: true, secure: Boolean(seguro), sameSite: 'strict', path: '/api', maxAge: ABSOLUTA_MS };
 }
@@ -20,7 +18,6 @@ export async function criarSessao(db, usuarioId, { ip, userAgent } = {}) {
      VALUES ($1, $2, now() + make_interval(secs => $3), $4, $5)`,
     [usuarioId, hashToken(token), ABSOLUTA_MS / 1000, ip || null, String(userAgent ?? '').slice(0, 300)]
   );
-  // aproveita para limpar sessões vencidas
   await db.query(
     'DELETE FROM sessoes_admin WHERE expira_em < now() OR ultimo_uso_em < now() - make_interval(secs => $1)',
     [OCIOSA_MS / 1000]
@@ -28,7 +25,6 @@ export async function criarSessao(db, usuarioId, { ip, userAgent } = {}) {
   return token;
 }
 
-/** Devolve { sessaoId, id, nome, email } se o token for válido; renova o "último uso". */
 export async function buscarSessao(db, token) {
   if (typeof token !== 'string' || !FORMATO_TOKEN.test(token)) return null;
   const { rows } = await db.query(

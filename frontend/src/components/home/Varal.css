@@ -75,6 +75,10 @@
 }
 .varal__meta { font-family: var(--f-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: var(--vinho); }
 .varal__name { font-family: var(--f-display); font-size: 32px; line-height: 1; text-transform: uppercase; }
+.varal__esgotado {
+  align-self: flex-start; background: var(--vinho); color: var(--cru); padding: 4px 8px;
+  font-family: var(--f-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.14em;
+}
 .varal__row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; }
 .varal__color { font-size: 14px; color: var(--grafite); }
 .varal__link {

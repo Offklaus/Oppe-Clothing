@@ -1,9 +1,5 @@
 import { useEffect, useRef } from 'react';
 
-/**
- * <dialog> nativo controlado por estado: prende o foco, fecha com Esc
- * e fecha ao clicar fora (no fundo escuro).
- */
 export default function Modal({ aberto, onFechar, className, rotuloId, children }) {
   const ref = useRef(null);
 
