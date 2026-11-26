@@ -316,14 +316,43 @@ export async function removerProduto(db, id) {
   return { nome: p.nome, cor: p.cor, arquivos };
 }
 
-const paraColecaoAdmin = (c) => ({
-  id: c.id, slug: c.slug, nome: c.nome, chamada: c.chamada, frase: c.frase, descricao: c.descricao,
-  ordem: c.ordem, ativa: c.ativa, totalProdutos: c.total_produtos ?? 0,
-  podeExcluir: (c.total_produtos ?? 0) === 0
-});
+function avisoDoDestaque(c) {
+  if (!c.ativa) return 'Não aparece no site: a coleção está desativada.';
+  if (!c.pecas_no_site) return 'Não aparece no site: nenhuma peça desta coleção está visível.';
+  return null;
+}
+
+function paraColecaoAdmin(c, destaqueId) {
+  const destaque = c.id === destaqueId;
+  return {
+    id: c.id, slug: c.slug, nome: c.nome, chamada: c.chamada, frase: c.frase, descricao: c.descricao,
+    ordem: c.ordem, ativa: c.ativa, totalProdutos: c.total_produtos ?? 0,
+    podeExcluir: (c.total_produtos ?? 0) === 0,
+    destaque,
+    podeDestacar: c.ativa,
+    destaqueAviso: destaque ? avisoDoDestaque(c) : null
+  };
+}
 
 export async function listarColecoesAdmin(db) {
-  return (await repoColecoes.listarTodas(db)).map(paraColecaoAdmin);
+  const [colecoes, loja] = await Promise.all([repoColecoes.listarTodas(db), repoLoja.obter(db)]);
+  return colecoes.map((c) => paraColecaoAdmin(c, loja.colecao_destaque_id));
+}
+
+export async function destacarColecao(db, id) {
+  const c = await repoColecoes.porId(db, id);
+  if (!c) throw naoEncontrado('Coleção');
+  if (!(await repoLoja.destacarColecao(db, id))) {
+    throw new ErroHttp(409, `Ative a coleção "${c.nome}" antes de destacar.`);
+  }
+  return { colecao: c, colecoes: await listarColecoesAdmin(db) };
+}
+
+export async function tirarDestaque(db, id) {
+  const c = await repoColecoes.porId(db, id);
+  if (!c) throw naoEncontrado('Coleção');
+  const mudou = await repoLoja.tirarColecaoDestaque(db, id);
+  return { colecao: c, mudou, colecoes: await listarColecoesAdmin(db) };
 }
 
 async function prepararColecao(db, dados, id = null) {
@@ -342,9 +371,9 @@ async function prepararColecao(db, dados, id = null) {
 }
 
 async function colecaoAdmin(db, id) {
-  const c = (await repoColecoes.listarTodas(db)).find((x) => x.id === id);
+  const c = (await listarColecoesAdmin(db)).find((x) => x.id === id);
   if (!c) throw naoEncontrado('Coleção');
-  return paraColecaoAdmin(c);
+  return c;
 }
 
 export async function criarColecao(db, dados) {
@@ -370,9 +399,7 @@ export async function removerColecao(db, id) {
 }
 
 export async function lojaAdmin(db) {
-  const [l, produtos, colecoes] = await Promise.all([
-    repoLoja.obter(db), repoProdutos.listarTodos(db), repoColecoes.listarTodas(db)
-  ]);
+  const [l, produtos] = await Promise.all([repoLoja.obter(db), repoProdutos.listarTodos(db)]);
   return {
     whatsapp: formatarWhatsapp(l.whatsapp_numero) ?? '',
     instagram: l.instagram ? `@${l.instagram}` : '',
@@ -386,10 +413,8 @@ export async function lojaAdmin(db) {
     medidas: l.medidas,
     mensagens: { saudacao: '', pedido: '', fechamento: '', contato: '', ...l.mensagens },
     destaqueProdutoId: l.destaque_produto_id,
-    colecaoDestaqueId: l.colecao_destaque_id,
     opcoes: {
-      produtos: produtos.map((p) => ({ id: p.id, nome: `${p.nome} — ${p.cor}` })),
-      colecoes: colecoes.map((c) => ({ id: c.id, nome: c.nome }))
+      produtos: produtos.map((p) => ({ id: p.id, nome: `${p.nome} — ${p.cor}` }))
     }
   };
 }
@@ -404,9 +429,6 @@ export async function salvarLoja(db, dados) {
   };
   if (normalizado.destaqueProdutoId && !(await repoProdutos.existe(db, normalizado.destaqueProdutoId))) {
     throw camposInvalidos({ destaqueProdutoId: 'Peça não encontrada.' });
-  }
-  if (normalizado.colecaoDestaqueId && !(await repoColecoes.porId(db, normalizado.colecaoDestaqueId))) {
-    throw camposInvalidos({ colecaoDestaqueId: 'Coleção não encontrada.' });
   }
   await repoLoja.atualizar(db, normalizado);
   return lojaAdmin(db);

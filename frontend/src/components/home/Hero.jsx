@@ -21,7 +21,7 @@ export default function Hero() {
       </p>
       <div className="hero__cta">
         <Link className="btn btn--dark btn--lg" to="/#catalogo">Ver catálogo</Link>
-        <Link className="btn btn--lg" to="/#colecoes">Key &amp; Heart</Link>
+        {loja?.colecaoDestaque && <Link className="btn btn--lg" to="/#colecoes">{loja.colecaoDestaque.nome}</Link>}
       </div>
     </section>
   );

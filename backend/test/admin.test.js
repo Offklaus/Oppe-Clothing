@@ -181,6 +181,56 @@ test('configurações da loja normalizam WhatsApp, Instagram e preço, e o site 
   assert.equal((await admin.pedir('PUT', '/loja', atual)).status, 200);
 });
 
+test('coleções: a destacada aparece na página inicial; sem destaque, nada aparece', async (t) => {
+  const { rows: [antes] } = await pool.query('SELECT colecao_destaque_id FROM configuracoes_loja');
+  t.after(() => pool.query('UPDATE configuracoes_loja SET colecao_destaque_id = $1', [antes.colecao_destaque_id]));
+  const loja = () => fetch(`${srv.base}/api/loja`).then((r) => r.json());
+  const destacadas = (lista) => lista.filter((c) => c.destaque).map((c) => c.nome);
+
+  const colecoes = (await admin.pedir('GET', '/colecoes')).corpo;
+  assert.deepEqual(destacadas(colecoes), ['Key & Heart']);
+  const faith = colecoes.find((c) => c.nome === 'Faith');
+
+  const destacar = await admin.pedir('PUT', `/colecoes/${faith.id}/destaque`);
+  assert.equal(destacar.status, 200);
+  assert.deepEqual(destacadas(destacar.corpo), ['Faith'], 'só uma fica em destaque');
+  assert.equal((await loja()).colecaoDestaque.nome, 'Faith');
+
+  const { opcoes, ...configuracoes } = (await admin.pedir('GET', '/loja')).corpo;
+  assert.equal(configuracoes.colecaoDestaqueId, undefined);
+  assert.equal(opcoes.colecoes, undefined);
+  assert.equal((await admin.pedir('PUT', '/loja', configuracoes)).status, 200);
+  assert.equal((await loja()).colecaoDestaque.nome, 'Faith', 'salvar a Loja não mexe no destaque');
+  assert.equal((await admin.pedir('PUT', '/loja', { ...configuracoes, colecaoDestaqueId: null })).status, 400);
+
+  const tirar = await admin.pedir('DELETE', `/colecoes/${faith.id}/destaque`);
+  assert.equal(tirar.status, 200);
+  assert.deepEqual(destacadas(tirar.corpo), []);
+  assert.equal((await loja()).colecaoDestaque, null, 'sem destaque, a página inicial não mostra coleção');
+
+  const inativa = (await admin.pedir('POST', '/colecoes', { nome: 'Desligada Teste', ativa: false })).corpo;
+  const recusa = await admin.pedir('PUT', `/colecoes/${inativa.id}/destaque`);
+  assert.equal(recusa.status, 409);
+  assert.match(recusa.corpo.erro, /Ative a coleção "Desligada Teste" antes de destacar/);
+  assert.equal(inativa.podeDestacar, false);
+
+  const vazia = (await admin.pedir('POST', '/colecoes', { nome: 'Vazia Teste' })).corpo;
+  const semPecas = await admin.pedir('PUT', `/colecoes/${vazia.id}/destaque`);
+  assert.equal(semPecas.status, 200);
+  assert.equal(semPecas.corpo.find((c) => c.id === vazia.id).destaqueAviso, 'Não aparece no site: nenhuma peça desta coleção está visível.');
+  assert.equal((await loja()).colecaoDestaque, null, 'coleção sem peças visíveis não aparece');
+  assert.equal((await admin.pedir('DELETE', `/colecoes/${vazia.id}`)).status, 204);
+  assert.deepEqual(destacadas((await admin.pedir('GET', '/colecoes')).corpo), [], 'excluir a coleção tira o destaque');
+  await admin.pedir('DELETE', `/colecoes/${inativa.id}`);
+
+  assert.equal((await admin.pedir('PUT', '/colecoes/999999/destaque')).status, 404);
+  assert.equal((await clienteAdmin(srv.base).pedir('PUT', `/colecoes/${faith.id}/destaque`)).status, 401);
+
+  const atividade = (await admin.pedir('GET', '/auditoria')).corpo.map((a) => a.descricao);
+  assert.ok(atividade.includes('destacou a coleção Faith na página inicial'));
+  assert.ok(atividade.includes('tirou a coleção Faith do destaque'));
+});
+
 test('admins: ninguém se desativa; troca de senha exige a atual e derruba as outras sessões', async () => {
   const eu = (await admin.pedir('GET', '/usuarios')).corpo.find((u) => u.voce);
   assert.equal((await admin.pedir('PUT', `/usuarios/${eu.id}`, { ativo: false })).status, 400);

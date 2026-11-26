@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router';
 import { api } from '../api.js';
 import Campo, { Alerta, Cabecalho } from '../componentes/Campo.jsx';
 
@@ -7,13 +8,12 @@ const paraFormulario = (l) => ({
   tamanhos: l.tamanhos.join(', '),
   modelagem: l.modelagem, malha: l.malha, tecnicaEstampa: l.tecnicaEstampa, cuidados: l.cuidados, sobre: l.sobre,
   medidas: l.medidas, mensagens: l.mensagens,
-  destaqueProdutoId: l.destaqueProdutoId == null ? '' : String(l.destaqueProdutoId),
-  colecaoDestaqueId: l.colecaoDestaqueId == null ? '' : String(l.colecaoDestaqueId)
+  destaqueProdutoId: l.destaqueProdutoId == null ? '' : String(l.destaqueProdutoId)
 });
 
 export default function Loja() {
   const [form, setForm] = useState(null);
-  const [opcoes, setOpcoes] = useState({ produtos: [], colecoes: [] });
+  const [opcoes, setOpcoes] = useState({ produtos: [] });
   const [erros, setErros] = useState({});
   const [mensagem, setMensagem] = useState('');
   const [aviso, setAviso] = useState('');
@@ -53,8 +53,7 @@ export default function Loja() {
     const corpo = {
       ...form,
       tamanhos: form.tamanhos.split(',').map((t) => t.trim()).filter(Boolean),
-      destaqueProdutoId: form.destaqueProdutoId ? Number(form.destaqueProdutoId) : null,
-      colecaoDestaqueId: form.colecaoDestaqueId ? Number(form.colecaoDestaqueId) : null
+      destaqueProdutoId: form.destaqueProdutoId ? Number(form.destaqueProdutoId) : null
     };
     try {
       carregar(await api.put('/loja', corpo));
@@ -163,12 +162,10 @@ export default function Loja() {
               rotulo="Peça que abre o varal" opcoes={[{ valor: '', rotulo: 'A primeira do catálogo' }, ...opcoes.produtos.map((p) => ({ valor: String(p.id), rotulo: p.nome }))]}
               value={form.destaqueProdutoId} onChange={mudar('destaqueProdutoId')} erro={erros.destaqueProdutoId}
             />
-            <Campo
-              rotulo="Coleção em destaque" opcoes={[{ valor: '', rotulo: 'Nenhuma (esconde a seção)' }, ...opcoes.colecoes.map((c) => ({ valor: String(c.id), rotulo: c.nome }))]}
-              value={form.colecaoDestaqueId} onChange={mudar('colecaoDestaqueId')} erro={erros.colecaoDestaqueId}
-              ajuda="Mostra as duas primeiras peças dela na faixa preta."
-            />
           </div>
+          <p className="adm-texto">
+            A coleção em destaque se escolhe em <Link to="/admin/colecoes">Coleções → Destacar</Link>.
+          </p>
         </section>
 
         <button type="submit" className="btn btn--dark btn--lg" disabled={salvando}>{salvando ? 'Salvando…' : 'Salvar configurações'}</button>

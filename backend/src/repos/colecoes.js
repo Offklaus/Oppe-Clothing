@@ -2,8 +2,11 @@ const CAMPOS = 'c.id, c.slug, c.nome, c.chamada, c.frase, c.descricao, c.ordem, 
 
 export async function listarTodas(db) {
   const { rows } = await db.query(
-    `SELECT ${CAMPOS}, count(p.id)::int AS total_produtos
-       FROM colecoes c LEFT JOIN produtos p ON p.colecao_id = c.id
+    `SELECT ${CAMPOS}, count(p.id)::int AS total_produtos,
+            count(p.id) FILTER (WHERE p.ativo AND i.produto_id IS NOT NULL)::int AS pecas_no_site
+       FROM colecoes c
+       LEFT JOIN produtos p ON p.colecao_id = c.id
+       LEFT JOIN produto_imagens i ON i.produto_id = p.id AND i.posicao = 0
       GROUP BY c.id ORDER BY c.ordem, c.nome`
   );
   return rows;

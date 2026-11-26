@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { useSacola } from '../../context/SacolaContext.jsx';
+import { useLoja } from '../../context/LojaContext.jsx';
 import { plural } from '../../lib/formato.js';
 import logoPreto from '../../assets/logo-preto.png';
 import './Header.css';
@@ -14,8 +15,10 @@ const LINKS = [
 
 export default function Header() {
   const { pecas, abrir } = useSacola();
+  const { loja } = useLoja();
   const { pathname } = useLocation();
   const [menuAberto, setMenuAberto] = useState(false);
+  const links = LINKS.filter(([destino]) => destino !== '/#colecoes' || loja?.colecaoDestaque);
 
   useEffect(() => { setMenuAberto(false); }, [pathname]);
 
@@ -29,7 +32,7 @@ export default function Header() {
           </Link>
 
           <nav className="header__nav" id="menu-principal" aria-label="Principal">
-            {LINKS.map(([destino, rotulo]) => (
+            {links.map(([destino, rotulo]) => (
               <Link key={destino} to={destino} onClick={() => setMenuAberto(false)}>{rotulo}</Link>
             ))}
           </nav>

@@ -29,6 +29,8 @@ const DESCRICOES = {
   colecao_criada: (d) => `criou a coleção ${d.nome}`,
   colecao_editada: (d) => `editou a coleção ${d.nome}`,
   colecao_removida: (d) => `excluiu a coleção ${d.nome}`,
+  colecao_destacada: (d) => `destacou a coleção ${d.nome} na página inicial`,
+  colecao_sem_destaque: (d) => `tirou a coleção ${d.nome} do destaque`,
   loja_editada: () => 'alterou as configurações da loja',
   usuario_criado: (d) => `cadastrou o admin ${d.email}`,
   usuario_editado: (d) => `alterou o admin ${d.email}`,
@@ -157,6 +159,18 @@ export function rotasAdmin({ pool, config, limiteLogin = 10 }) {
     const c = await catalogo.removerColecao(pool, id);
     await registrar(req, 'colecao_removida', 'colecao', id, { nome: c.nome });
     res.status(204).end();
+  });
+
+  r.put('/colecoes/:id/destaque', async (req, res) => {
+    const { colecao, colecoes } = await catalogo.destacarColecao(pool, idNumerico(req));
+    await registrar(req, 'colecao_destacada', 'colecao', colecao.id, { nome: colecao.nome });
+    res.json(colecoes);
+  });
+
+  r.delete('/colecoes/:id/destaque', async (req, res) => {
+    const { colecao, mudou, colecoes } = await catalogo.tirarDestaque(pool, idNumerico(req));
+    if (mudou) await registrar(req, 'colecao_sem_destaque', 'colecao', colecao.id, { nome: colecao.nome });
+    res.json(colecoes);
   });
 
   r.get('/pedidos', async (req, res) => {

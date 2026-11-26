@@ -93,6 +93,9 @@
 .adm-selo--ok { background: var(--preto); border-color: var(--preto); color: var(--cru); }
 .adm-selo--off { color: var(--grafite); }
 .adm-selo--aviso { color: var(--vinho); }
+.adm-selo--destaque { background: var(--vermelho); border-color: var(--vermelho); color: var(--cru); }
+.adm-colecoes__ajuda { margin: -8px 0 20px; max-width: 70ch; }
+.adm-colecoes__aviso { display: block; margin-top: 6px; color: var(--vinho); font-size: 12px; font-weight: 700; max-width: 32ch; }
 
 .adm-intro { margin: -12px 0 20px; max-width: 70ch; }
 .adm-vazio { padding: 32px 0; }

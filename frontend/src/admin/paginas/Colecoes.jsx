@@ -51,6 +51,23 @@ export default function Colecoes() {
     }
   }
 
+  async function alternarDestaque(colecao) {
+    setMensagem('');
+    setAviso('');
+    try {
+      if (colecao.destaque) {
+        await api.del(`/colecoes/${colecao.id}/destaque`);
+        setAviso(`"${colecao.nome}" saiu do destaque. A página inicial fica sem coleção em destaque.`);
+      } else {
+        await api.put(`/colecoes/${colecao.id}/destaque`);
+        setAviso(`"${colecao.nome}" está em destaque na página inicial.`);
+      }
+      recarregar();
+    } catch (falha) {
+      setMensagem(falha.message);
+    }
+  }
+
   async function excluir(colecao) {
     if (!window.confirm(`Excluir a coleção "${colecao.nome}"?`)) return;
     setMensagem('');
@@ -69,6 +86,10 @@ export default function Colecoes() {
       <Cabecalho sobre="CATÁLOGO" titulo="Coleções">
         <button type="button" className="btn btn--dark" onClick={() => abrir(null)}>Nova coleção</button>
       </Cabecalho>
+      <p className="adm-texto adm-colecoes__ajuda">
+        A coleção em destaque ganha um botão ao lado de “Ver catálogo” na página inicial e a faixa preta com as peças dela.
+        Só uma fica em destaque por vez; sem nenhuma, os dois somem do site.
+      </p>
       <Alerta tipo="ok">{aviso}</Alerta>
       <Alerta>{mensagem || erro?.message}</Alerta>
 
@@ -111,10 +132,23 @@ export default function Colecoes() {
                   <td className="adm-tabela__nome">{c.nome}<small>{c.chamada}</small></td>
                   <td>{c.totalProdutos}</td>
                   <td>
-                    {c.ativa ? <span className="adm-selo adm-selo--ok">ATIVA</span> : <span className="adm-selo adm-selo--off">DESATIVADA</span>}
+                    <div className="adm-selos">
+                      {c.ativa ? <span className="adm-selo adm-selo--ok">ATIVA</span> : <span className="adm-selo adm-selo--off">DESATIVADA</span>}
+                      {c.destaque && <span className="adm-selo adm-selo--destaque">★ EM DESTAQUE</span>}
+                    </div>
+                    {c.destaqueAviso && <small className="adm-colecoes__aviso">{c.destaqueAviso}</small>}
                   </td>
                   <td>
                     <div className="adm-acoes adm-acoes--fim">
+                      <button
+                        type="button"
+                        className={c.destaque ? 'btn' : 'btn btn--dark'}
+                        onClick={() => alternarDestaque(c)}
+                        disabled={!c.destaque && !c.podeDestacar}
+                        title={!c.destaque && !c.podeDestacar ? 'Ative a coleção antes de destacar' : undefined}
+                      >
+                        {c.destaque ? 'Tirar destaque' : 'Destacar'}
+                      </button>
                       <button type="button" className="btn" onClick={() => abrir(c)}>Editar</button>
                       <button
                         type="button"

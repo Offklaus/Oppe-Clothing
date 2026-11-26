@@ -67,8 +67,7 @@ export const esquemaLoja = z.strictObject({
     fechamento: opcional(300, 'Fechamento'),
     contato: opcional(300, 'Mensagem de contato')
   }),
-  destaqueProdutoId: idOpcional,
-  colecaoDestaqueId: idOpcional
+  destaqueProdutoId: idOpcional
 });
 
 const email = z.string().trim().toLowerCase().max(254, 'E-mail longo demais.').pipe(z.email('E-mail inválido.'));
